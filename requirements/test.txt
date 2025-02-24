@@ -1,2 +1,2 @@
--r flake8.txt
+-r flake8-plugins.txt
 django-debug-toolbar==4.4.6

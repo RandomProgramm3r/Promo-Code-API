@@ -1,6 +1,6 @@
 [flake8]
 max-line-length = 79
-# application_import_names = api
+application_import_names = promo_code
 import-order-style = google
 exclude = */migrations/, venv/, verdict.py, .venv/,  env/, venv, .git, __pycache__
 max-complexity = 10
