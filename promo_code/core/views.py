@@ -1,5 +1,5 @@
-import django.views
 import django.http
+import django.views
 
 
 class PingView(django.views.View):

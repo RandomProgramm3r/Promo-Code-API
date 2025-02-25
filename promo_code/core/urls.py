@@ -1,7 +1,5 @@
-import django.urls
-
 import core.views
-
+import django.urls
 
 app_name = 'core'
 
