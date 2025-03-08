@@ -59,7 +59,7 @@ SIMPLE_JWT = {
     'REFRESH_TOKEN_LIFETIME': datetime.timedelta(days=1),
     'ROTATE_REFRESH_TOKENS': True,
     'BLACKLIST_AFTER_ROTATION': True,
-    'UPDATE_LAST_LOGIN': False,
+    'UPDATE_LAST_LOGIN': False,  # !
     #
     'ALGORITHM': 'HS256',
     'SIGNING_KEY': SECRET_KEY,
@@ -135,20 +135,32 @@ DATABASES = {
 
 AUTH_PASSWORD_VALIDATORS = [
     {
-        'NAME': 'django.contrib.auth.password_validation.'
-        'UserAttributeSimilarityValidator',
+        'NAME': 'django.contrib.auth.password_validation'
+        '.UserAttributeSimilarityValidator',
     },
     {
-        'NAME': 'django.contrib.auth.password_validation.'
-        'MinimumLengthValidator',
+        'NAME': 'django.contrib.auth.password_validation'
+        '.MinimumLengthValidator',
     },
     {
-        'NAME': 'django.contrib.auth.password_validation.'
-        'CommonPasswordValidator',
+        'NAME': 'django.contrib.auth.password_validation'
+        '.CommonPasswordValidator',
     },
     {
-        'NAME': 'django.contrib.auth.password_validation.'
-        'NumericPasswordValidator',
+        'NAME': 'django.contrib.auth.password_validation'
+        '.NumericPasswordValidator',
+    },
+    {
+        'NAME': 'promo_code.validators.SpecialCharacterPasswordValidator',
+    },
+    {
+        'NAME': 'promo_code.validators.NumericPasswordValidator',
+    },
+    {
+        'NAME': 'promo_code.validators.LatinLetterPasswordValidator',
+    },
+    {
+        'NAME': 'promo_code.validators.UppercaseLatinLetterPasswordValidator',
     },
 ]
 

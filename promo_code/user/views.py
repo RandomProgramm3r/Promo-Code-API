@@ -9,7 +9,20 @@ import rest_framework_simplejwt.views
 import user.serializers
 
 
-class SignUpView(rest_framework.generics.CreateAPIView):
+class BaseCustomResponseMixin:
+    error_response = {'status': 'error', 'message': 'Error in request data.'}
+
+    def handle_validation_error(self):
+        return rest_framework.response.Response(
+            self.error_response,
+            status=rest_framework.status.HTTP_400_BAD_REQUEST,
+        )
+
+
+class SignUpView(
+    BaseCustomResponseMixin,
+    rest_framework.generics.CreateAPIView,
+):
     serializer_class = user.serializers.SignUpSerializer
 
     def create(self, request, *args, **kwargs):
@@ -17,24 +30,8 @@ class SignUpView(rest_framework.generics.CreateAPIView):
 
         try:
             serializer.is_valid(raise_exception=True)
-        except rest_framework.exceptions.ValidationError as e:
-            if hasattr(e, 'get_codes'):
-                codes = e.get_codes()
-                if 'email' in codes and 'email_conflict' in codes['email']:
-                    return rest_framework.response.Response(
-                        {
-                            'status': 'error',
-                            'message': (
-                                'This email address is already registered.'
-                            ),
-                        },
-                        status=rest_framework.status.HTTP_409_CONFLICT,
-                    )
-
-            return rest_framework.response.Response(
-                {'status': 'error', 'message': 'Error in request data.'},
-                status=rest_framework.status.HTTP_400_BAD_REQUEST,
-            )
+        except rest_framework.exceptions.ValidationError:
+            return self.handle_validation_error()
 
         user = serializer.save()
         refresh = rest_framework_simplejwt.tokens.RefreshToken.for_user(user)
@@ -44,7 +41,10 @@ class SignUpView(rest_framework.generics.CreateAPIView):
         )
 
 
-class SignInView(rest_framework_simplejwt.views.TokenViewBase):
+class SignInView(
+    BaseCustomResponseMixin,
+    rest_framework_simplejwt.views.TokenViewBase,
+):
     serializer_class = user.serializers.SignInSerializer
 
     def post(self, request, *args, **kwargs):
@@ -52,25 +52,8 @@ class SignInView(rest_framework_simplejwt.views.TokenViewBase):
 
         try:
             serializer.is_valid(raise_exception=True)
-        except rest_framework.serializers.ValidationError as e:
-            code = (
-                next(iter(e.get_codes().values()))[0]
-                if e.get_codes()
-                else None
-            )
-            if code == 'authorization':
-                return rest_framework.response.Response(
-                    {
-                        'status': 'error',
-                        'message': 'Invalid email or password.',
-                    },
-                    status=rest_framework.status.HTTP_401_UNAUTHORIZED,
-                )
-
-            return rest_framework.response.Response(
-                {'status': 'error', 'message': 'Error in request data.'},
-                status=rest_framework.status.HTTP_400_BAD_REQUEST,
-            )
+        except rest_framework.serializers.ValidationError:
+            return self.handle_validation_error()
 
         return rest_framework.response.Response(
             serializer.get_token(),

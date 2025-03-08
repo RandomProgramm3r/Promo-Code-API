@@ -1,9 +1,13 @@
 import django.contrib.auth.password_validation
 import django.core.exceptions
+import django.core.validators
+import rest_framework.exceptions
 import rest_framework.serializers
+import rest_framework.status
 import rest_framework_simplejwt.tokens
 
-import user.models
+import user.models as user_models
+import user.validators
 
 
 class SignUpSerializer(rest_framework.serializers.ModelSerializer):
@@ -15,43 +19,44 @@ class SignUpSerializer(rest_framework.serializers.ModelSerializer):
         min_length=8,
         style={'input_type': 'password'},
     )
-    name = rest_framework.serializers.CharField(
-        required=True,
-    )
-    surname = rest_framework.serializers.CharField(
-        required=True,
-    )
+    name = rest_framework.serializers.CharField(required=True, min_length=1)
+    surname = rest_framework.serializers.CharField(required=True, min_length=1)
     email = rest_framework.serializers.EmailField(
         required=True,
+        min_length=8,
+        validators=[
+            user.validators.UniqueEmailValidator(
+                'This email address is already registered.',
+                'email_conflict',
+            ),
+        ],
+    )
+    avatar_url = rest_framework.serializers.CharField(
+        required=False,
+        max_length=350,
+        validators=[
+            django.core.validators.URLValidator(schemes=['http', 'https']),
+        ],
     )
     other = rest_framework.serializers.JSONField(
         required=True,
+        validators=[user.validators.OtherFieldValidator()],
     )
 
     class Meta:
-        model = user.models.User
-        fields = [
+        model = user_models.User
+        fields = (
             'name',
             'surname',
             'email',
             'avatar_url',
             'other',
             'password',
-        ]
-        extra_kwargs = {'avatar_url': {'required': False}}
-
-    def validate_email(self, value):
-        if user.models.User.objects.filter(email=value).exists():
-            raise rest_framework.serializers.ValidationError(
-                'User with this email already exists.',
-                code='email_conflict',
-            )
-
-        return value
+        )
 
     def create(self, validated_data):
         try:
-            user_ = user.models.User.objects.create_user(
+            user = user_models.User.objects.create_user(
                 email=validated_data['email'],
                 name=validated_data['name'],
                 surname=validated_data['surname'],
@@ -59,7 +64,7 @@ class SignUpSerializer(rest_framework.serializers.ModelSerializer):
                 other=validated_data['other'],
                 password=validated_data['password'],
             )
-            return user_
+            return user
         except django.core.exceptions.ValidationError as e:
             raise rest_framework.serializers.ValidationError(e.messages)
 
@@ -87,7 +92,7 @@ class SignInSerializer(rest_framework.serializers.Serializer):
             password=password,
         )
         if not user:
-            raise rest_framework.serializers.ValidationError(
+            raise rest_framework.exceptions.AuthenticationFailed(
                 {'status': 'error', 'message': 'Invalid email or password.'},
                 code='authorization',
             )
