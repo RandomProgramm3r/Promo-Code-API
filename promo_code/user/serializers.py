@@ -1,0 +1,106 @@
+import django.contrib.auth.password_validation
+import django.core.exceptions
+import django.core.validators
+import rest_framework.exceptions
+import rest_framework.serializers
+import rest_framework.status
+import rest_framework_simplejwt.tokens
+
+import user.models as user_models
+import user.validators
+
+
+class SignUpSerializer(rest_framework.serializers.ModelSerializer):
+    password = rest_framework.serializers.CharField(
+        write_only=True,
+        required=True,
+        validators=[django.contrib.auth.password_validation.validate_password],
+        max_length=60,
+        min_length=8,
+        style={'input_type': 'password'},
+    )
+    name = rest_framework.serializers.CharField(required=True, min_length=1)
+    surname = rest_framework.serializers.CharField(required=True, min_length=1)
+    email = rest_framework.serializers.EmailField(
+        required=True,
+        min_length=8,
+        validators=[
+            user.validators.UniqueEmailValidator(
+                'This email address is already registered.',
+                'email_conflict',
+            ),
+        ],
+    )
+    avatar_url = rest_framework.serializers.CharField(
+        required=False,
+        max_length=350,
+        validators=[
+            django.core.validators.URLValidator(schemes=['http', 'https']),
+        ],
+    )
+    other = rest_framework.serializers.JSONField(
+        required=True,
+        validators=[user.validators.OtherFieldValidator()],
+    )
+
+    class Meta:
+        model = user_models.User
+        fields = (
+            'name',
+            'surname',
+            'email',
+            'avatar_url',
+            'other',
+            'password',
+        )
+
+    def create(self, validated_data):
+        try:
+            user = user_models.User.objects.create_user(
+                email=validated_data['email'],
+                name=validated_data['name'],
+                surname=validated_data['surname'],
+                avatar_url=validated_data.get('avatar_url'),
+                other=validated_data['other'],
+                password=validated_data['password'],
+            )
+            return user
+        except django.core.exceptions.ValidationError as e:
+            raise rest_framework.serializers.ValidationError(e.messages)
+
+
+class SignInSerializer(rest_framework.serializers.Serializer):
+    email = rest_framework.serializers.EmailField(required=True)
+    password = rest_framework.serializers.CharField(
+        required=True,
+        write_only=True,
+    )
+
+    def validate(self, data):
+        email = data.get('email')
+        password = data.get('password')
+
+        if not email or not password:
+            raise rest_framework.serializers.ValidationError(
+                {'status': 'error', 'message': 'Both fields are required.'},
+                code='required',
+            )
+
+        user = django.contrib.auth.authenticate(
+            request=self.context.get('request'),
+            email=email,
+            password=password,
+        )
+        if not user:
+            raise rest_framework.exceptions.AuthenticationFailed(
+                {'status': 'error', 'message': 'Invalid email or password.'},
+                code='authorization',
+            )
+
+        data['user'] = user
+        return data
+
+    def get_token(self):
+        user = self.validated_data['user']
+        refresh = rest_framework_simplejwt.tokens.RefreshToken.for_user(user)
+        return {'token': str(refresh.access_token)}
