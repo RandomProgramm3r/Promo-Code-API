@@ -7,12 +7,12 @@ app_name = 'api-user'
 
 urlpatterns = [
     django.urls.path(
-        'user/auth/sign-up',
+        'auth/sign-up',
         user.views.SignUpView.as_view(),
         name='sign-up',
     ),
     django.urls.path(
-        'user/auth/sign-in',
+        'auth/sign-in',
         user.views.SignInView.as_view(),
         name='sign-in',
     ),
