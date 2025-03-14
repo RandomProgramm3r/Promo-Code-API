@@ -46,6 +46,8 @@ class User(
     )
     other = django.db.models.JSONField(default=dict)
 
+    token_version = django.db.models.IntegerField(default=0)
+
     is_active = django.db.models.BooleanField(default=True)
     is_staff = django.db.models.BooleanField(default=False)
     last_login = django.db.models.DateTimeField(null=True, blank=True)

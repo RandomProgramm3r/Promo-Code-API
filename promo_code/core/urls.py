@@ -1,7 +1,7 @@
 import core.views
 import django.urls
 
-app_name = 'core'
+app_name = 'api-core'
 
 
 urlpatterns = [
@@ -9,5 +9,10 @@ urlpatterns = [
         '',
         core.views.PingView.as_view(),
         name='ping',
+    ),
+    django.urls.path(
+        'protected-endpoint/',
+        core.views.MyProtectedView.as_view(),
+        name='protected',
     ),
 ]

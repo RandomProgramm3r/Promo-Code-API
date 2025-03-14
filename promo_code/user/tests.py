@@ -5,7 +5,6 @@ import rest_framework.status
 import rest_framework.test
 
 import user.models
-import user.tokens
 
 
 class AuthTestCase(rest_framework.test.APITestCase):
@@ -18,7 +17,6 @@ class AuthTestCase(rest_framework.test.APITestCase):
         super(AuthTestCase, self).tearDown()
 
     def test_valid_registration_and_email_duplication(self):
-        # Successful registration
         valid_data = {
             'name': 'Emma',
             'surname': 'Thompson',
@@ -36,7 +34,6 @@ class AuthTestCase(rest_framework.test.APITestCase):
             rest_framework.status.HTTP_200_OK,
         )
 
-        # Duplicate email registration attempt
         duplicate_data = {
             'name': 'Lui',
             'surname': 'Jomalone',
