@@ -3,6 +3,7 @@ import rest_framework.generics
 import rest_framework.response
 import rest_framework.serializers
 import rest_framework.status
+import rest_framework_simplejwt.exceptions
 import rest_framework_simplejwt.tokens
 import rest_framework_simplejwt.views
 
@@ -43,7 +44,7 @@ class SignUpView(
 
 class SignInView(
     BaseCustomResponseMixin,
-    rest_framework_simplejwt.views.TokenViewBase,
+    rest_framework_simplejwt.views.TokenObtainPairView,
 ):
     serializer_class = user.serializers.SignInSerializer
 
@@ -52,10 +53,17 @@ class SignInView(
 
         try:
             serializer.is_valid(raise_exception=True)
-        except rest_framework.serializers.ValidationError:
-            return self.handle_validation_error()
+            response = super().post(request, *args, **kwargs)
+        except (
+            rest_framework.serializers.ValidationError,
+            rest_framework_simplejwt.exceptions.TokenError,
+        ) as e:
+            if isinstance(e, rest_framework.serializers.ValidationError):
+                return self.handle_validation_error()
+
+            raise rest_framework_simplejwt.exceptions.InvalidToken(str(e))
 
         return rest_framework.response.Response(
-            serializer.get_token(),
+            response,
             status=rest_framework.status.HTTP_200_OK,
         )

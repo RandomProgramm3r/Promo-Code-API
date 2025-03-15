@@ -4,6 +4,8 @@ import django.core.validators
 import rest_framework.exceptions
 import rest_framework.serializers
 import rest_framework.status
+import rest_framework_simplejwt.serializers
+import rest_framework_simplejwt.token_blacklist.models as tb_models
 import rest_framework_simplejwt.tokens
 
 import user.models as user_models
@@ -69,7 +71,9 @@ class SignUpSerializer(rest_framework.serializers.ModelSerializer):
             raise rest_framework.serializers.ValidationError(e.messages)
 
 
-class SignInSerializer(rest_framework.serializers.Serializer):
+class SignInSerializer(
+    rest_framework_simplejwt.serializers.TokenObtainPairSerializer,
+):
     email = rest_framework.serializers.EmailField(required=True)
     password = rest_framework.serializers.CharField(
         required=True,
@@ -97,10 +101,51 @@ class SignInSerializer(rest_framework.serializers.Serializer):
                 code='authorization',
             )
 
-        data['user'] = user
+        authenticate_kwargs = {
+            self.username_field: data[self.username_field],
+            'password': data['password'],
+        }
+        try:
+            authenticate_kwargs['request'] = self.context['request']
+        except KeyError:
+            pass
+
+        self.user = django.contrib.auth.authenticate(**authenticate_kwargs)
+
+        if not getattr(self.user, 'is_active', None):
+            raise rest_framework.exceptions.AuthenticationFailed(
+                self.error_messages['no_active_account'],
+                'no_active_account',
+            )
+
+        self.user.token_version += 1
+        self.user.save()
+
+        refresh = self.get_token(self.user)
+        data = {
+            'refresh': str(refresh),
+            'access': str(refresh.access_token),
+        }
+
+        current_jti = refresh['jti']
+
+        tokens_qs = tb_models.OutstandingToken.objects.filter(
+            user=self.user,
+        )
+
+        outstanding_tokens = tokens_qs.exclude(jti=current_jti)
+
+        for token in outstanding_tokens:
+            (
+                tb_models.BlacklistedToken.objects.get_or_create(
+                    token=token,
+                )
+            )
+
+        data['token_version'] = self.user.token_version
         return data
 
-    def get_token(self):
-        user = self.validated_data['user']
-        refresh = rest_framework_simplejwt.tokens.RefreshToken.for_user(user)
-        return {'token': str(refresh.access_token)}
+    def get_token(self, user):
+        token = super().get_token(user)
+        token['token_version'] = user.token_version
+        return token
