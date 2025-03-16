@@ -34,7 +34,6 @@ class OtherFieldValidator(rest_framework.serializers.Serializer):
     """
 
     country_codes = {c.alpha_2 for c in pycountry.countries}
-    print(country_codes)
 
     age = rest_framework.serializers.IntegerField(
         required=True,
