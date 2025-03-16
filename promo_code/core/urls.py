@@ -1,5 +1,6 @@
-import core.views
 import django.urls
+
+import core.views
 
 app_name = 'api-core'
 

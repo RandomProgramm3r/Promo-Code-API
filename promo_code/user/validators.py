@@ -1,5 +1,6 @@
 import pycountry
 import rest_framework.exceptions
+import rest_framework.serializers
 
 import user.models
 
@@ -25,47 +26,67 @@ class UniqueEmailValidator:
             raise exc
 
 
-class OtherFieldValidator:
+class OtherFieldValidator(rest_framework.serializers.Serializer):
     """
-    Validator for JSON fields containing:
-    - age (required, integer between 0 and 100)
-    - country (required, string with an ISO 3166-1 alpha-2 country code)
+    Validates JSON fields:
+    - age (required, 0-100)
+    - country (required, valid ISO 3166-1 alpha-2)
     """
 
-    error_messages = {
-        'invalid_type': 'Must be a JSON object.',
-        'missing_field': 'This field is required.',
-        'age_type': 'Must be an integer.',
-        'age_range': 'Must be between 0 and 100.',
-        'country_format': 'Must be a 2-letter ISO code.',
-        'country_invalid': 'Invalid ISO 3166-1 alpha-2 country code.',
-    }
+    country_codes = {c.alpha_2 for c in pycountry.countries}
+
+    age = rest_framework.serializers.IntegerField(
+        required=True,
+        min_value=0,
+        max_value=100,
+        error_messages={
+            'required': 'This field is required.',
+            'invalid': 'Must be an integer.',
+            'min_value': 'Must be between 0 and 100.',
+            'max_value': 'Must be between 0 and 100.',
+        },
+    )
+
+    country = rest_framework.serializers.CharField(
+        required=True,
+        max_length=2,
+        min_length=2,
+        error_messages={
+            'required': 'This field is required.',
+            'blank': 'Must be a 2-letter ISO code.',
+            'max_length': 'Must be a 2-letter ISO code.',
+            'min_length': 'Must be a 2-letter ISO code.',
+        },
+    )
+
+    def validate_country(self, value):
+        country = value.upper()
+        if country not in self.country_codes:
+            raise rest_framework.serializers.ValidationError(
+                'Invalid ISO 3166-1 alpha-2 country code.',
+            )
+
+        return country
 
     def __call__(self, value):
         if not isinstance(value, dict):
-            raise rest_framework.exceptions.ValidationError(
-                self.error_messages['invalid_type'],
+            raise rest_framework.serializers.ValidationError(
+                {'non_field_errors': ['Must be a JSON object']},
             )
 
-        errors = {}
+        missing_fields = [
+            field
+            for field in self.fields
+            if field not in value or value.get(field) in (None, '')
+        ]
 
-        # Validate the 'age' field
-        age = value.get('age')
-        if age is None:
-            errors['age'] = self.error_messages['missing_field']
-        elif not isinstance(age, int):
-            errors['age'] = self.error_messages['age_type']
-        elif not (0 <= age <= 100):
-            errors['age'] = self.error_messages['age_range']
+        if missing_fields:
+            raise rest_framework.serializers.ValidationError(
+                {field: 'This field is required.' for field in missing_fields},
+            )
 
-        # Validate the 'country' field
-        country_code = value.get('country')
-        if country_code is None:
-            errors['country'] = self.error_messages['missing_field']
-        elif not (isinstance(country_code, str) and len(country_code) == 2):
-            errors['country'] = self.error_messages['country_format']
-        elif not pycountry.countries.get(alpha_2=country_code.upper()):
-            errors['country'] = self.error_messages['country_invalid']
+        serializer = self.__class__(data=value)
+        if not serializer.is_valid():
+            raise rest_framework.serializers.ValidationError(serializer.errors)
 
-        if errors:
-            raise rest_framework.exceptions.ValidationError(errors)
+        return value
