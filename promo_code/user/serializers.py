@@ -66,6 +66,8 @@ class SignUpSerializer(rest_framework.serializers.ModelSerializer):
                 other=validated_data['other'],
                 password=validated_data['password'],
             )
+            user.token_version += 1
+            user.save()
             return user
         except django.core.exceptions.ValidationError as e:
             raise rest_framework.serializers.ValidationError(e.messages)

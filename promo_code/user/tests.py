@@ -324,7 +324,7 @@ class AuthFlowTestCase(rest_framework.test.APITestCase):
             response.status_code,
             rest_framework.status.HTTP_200_OK,
         )
-        self.assertIn('token', response.data)
+        self.assertIn('access', response.data)
         self.assertTrue(
             user.models.User.objects.filter(
                 email='minecraft.digger@gmail.com',
@@ -391,7 +391,7 @@ class AuthFlowTestCase(rest_framework.test.APITestCase):
 
 class JWTTests(rest_framework.test.APITestCase):
     def setUp(self):
-
+        self.signup_url = django.urls.reverse('api-user:sign-up')
         self.signin_url = django.urls.reverse('api-user:sign-in')
         self.protected_url = django.urls.reverse('api-core:protected')
         self.refresh_url = django.urls.reverse('api-user:token_refresh')
@@ -427,6 +427,47 @@ class JWTTests(rest_framework.test.APITestCase):
         response = self.client.get(self.protected_url)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data['status'], 'request was permitted')
+
+    def test_registration_token_invalid_after_login(self):
+        data = {
+            'email': 'test@example.com',
+            'password': 'StrongPass123!cd',
+            'name': 'John',
+            'surname': 'Doe',
+            'other': {'age': 22, 'country': 'us'},
+        }
+        response = self.client.post(
+            self.signup_url,
+            data,
+            format='json',
+        )
+        reg_access_token = response.data['access']
+
+        self.client.credentials(
+            HTTP_AUTHORIZATION=f'Bearer {reg_access_token}',
+        )
+        response = self.client.get(self.protected_url)
+        self.assertEqual(response.status_code, 200)
+
+        login_data = {'email': data['email'], 'password': data['password']}
+        response = self.client.post(
+            self.signin_url,
+            login_data,
+            format='json',
+        )
+        login_access_token = response.data['access']
+
+        self.client.credentials(
+            HTTP_AUTHORIZATION=f'Bearer {reg_access_token}',
+        )
+        response = self.client.get(self.protected_url)
+        self.assertEqual(response.status_code, 401)
+
+        self.client.credentials(
+            HTTP_AUTHORIZATION=f'Bearer {login_access_token}',
+        )
+        response = self.client.get(self.protected_url)
+        self.assertEqual(response.status_code, 200)
 
     def test_refresh_token_invalidation_after_new_login(self):
 

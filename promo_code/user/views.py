@@ -36,8 +36,10 @@ class SignUpView(
 
         user = serializer.save()
         refresh = rest_framework_simplejwt.tokens.RefreshToken.for_user(user)
+        refresh['token_version'] = user.token_version
+        access_token = refresh.access_token
         return rest_framework.response.Response(
-            {'token': str(refresh.access_token)},
+            {'access': str(access_token), 'refresh': str(refresh)},
             status=rest_framework.status.HTTP_200_OK,
         )
 
