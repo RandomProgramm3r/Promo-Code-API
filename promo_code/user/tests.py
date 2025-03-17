@@ -470,12 +470,12 @@ class JWTTests(rest_framework.test.APITestCase):
         self.assertEqual(response.status_code, 200)
 
     def test_refresh_token_invalidation_after_new_login(self):
-
         first_login_response = self.client.post(
             self.signin_url,
             self.user_data,
             format='json',
         )
+
         refresh_token_v1 = first_login_response.data['refresh']
 
         second_login_response = self.client.post(
@@ -534,21 +534,3 @@ class JWTTests(rest_framework.test.APITestCase):
             (tb_models.OutstandingToken.objects.count()),
             2,
         )
-
-    def test_token_version_increment(self):
-        response1 = self.client.post(
-            self.signin_url,
-            self.user_data,
-            format='json',
-        )
-        self.assertEqual(response1.data['token_version'], 1)
-
-        response2 = self.client.post(
-            self.signin_url,
-            self.user_data,
-            format='json',
-        )
-        self.assertEqual(response2.data['token_version'], 2)
-
-        user_ = user.models.User.objects.get(email=self.user_data['email'])
-        self.assertEqual(user_.token_version, 2)

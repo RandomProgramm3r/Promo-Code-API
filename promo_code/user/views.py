@@ -35,9 +35,11 @@ class SignUpView(
             return self.handle_validation_error()
 
         user = serializer.save()
+
         refresh = rest_framework_simplejwt.tokens.RefreshToken.for_user(user)
         refresh['token_version'] = user.token_version
         access_token = refresh.access_token
+
         return rest_framework.response.Response(
             {'access': str(access_token), 'refresh': str(refresh)},
             status=rest_framework.status.HTTP_200_OK,
@@ -51,11 +53,10 @@ class SignInView(
     serializer_class = user.serializers.SignInSerializer
 
     def post(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
 
         try:
+            serializer = self.get_serializer(data=request.data)
             serializer.is_valid(raise_exception=True)
-            response = super().post(request, *args, **kwargs)
         except (
             rest_framework.serializers.ValidationError,
             rest_framework_simplejwt.exceptions.TokenError,
@@ -65,7 +66,12 @@ class SignInView(
 
             raise rest_framework_simplejwt.exceptions.InvalidToken(str(e))
 
+        response_data = {
+            'access': serializer.validated_data['access'],
+            'refresh': serializer.validated_data['refresh'],
+        }
+
         return rest_framework.response.Response(
-            response,
+            response_data,
             status=rest_framework.status.HTTP_200_OK,
         )
