@@ -66,6 +66,8 @@ class SignUpSerializer(rest_framework.serializers.ModelSerializer):
                 other=validated_data['other'],
                 password=validated_data['password'],
             )
+            user.token_version += 1
+            user.save()
             return user
         except django.core.exceptions.ValidationError as e:
             raise rest_framework.serializers.ValidationError(e.messages)
@@ -80,13 +82,26 @@ class SignInSerializer(
         write_only=True,
     )
 
-    def validate(self, data):
-        email = data.get('email')
-        password = data.get('password')
+    def validate(self, attrs):
+        user = self.authenticate_user(attrs)
+
+        self.update_token_version(user)
+
+        data = super().validate(attrs)
+
+        refresh = rest_framework_simplejwt.tokens.RefreshToken(data['refresh'])
+
+        self.invalidate_previous_tokens(user, refresh['jti'])
+
+        return data
+
+    def authenticate_user(self, attrs):
+        email = attrs.get('email')
+        password = attrs.get('password')
 
         if not email or not password:
-            raise rest_framework.serializers.ValidationError(
-                {'status': 'error', 'message': 'Both fields are required.'},
+            raise rest_framework.exceptions.ValidationError(
+                {'detail': 'Both email and password are required'},
                 code='required',
             )
 
@@ -95,55 +110,26 @@ class SignInSerializer(
             email=email,
             password=password,
         )
-        if not user:
+
+        if not user or not user.is_active:
             raise rest_framework.exceptions.AuthenticationFailed(
-                {'status': 'error', 'message': 'Invalid email or password.'},
-                code='authorization',
+                {'detail': 'Invalid credentials or inactive account'},
+                code='authentication_failed',
             )
 
-        authenticate_kwargs = {
-            self.username_field: data[self.username_field],
-            'password': data['password'],
-        }
-        try:
-            authenticate_kwargs['request'] = self.context['request']
-        except KeyError:
-            pass
+        return user
 
-        self.user = django.contrib.auth.authenticate(**authenticate_kwargs)
-
-        if not getattr(self.user, 'is_active', None):
-            raise rest_framework.exceptions.AuthenticationFailed(
-                self.error_messages['no_active_account'],
-                'no_active_account',
-            )
-
-        self.user.token_version += 1
-        self.user.save()
-
-        refresh = self.get_token(self.user)
-        data = {
-            'refresh': str(refresh),
-            'access': str(refresh.access_token),
-        }
-
-        current_jti = refresh['jti']
-
-        tokens_qs = tb_models.OutstandingToken.objects.filter(
-            user=self.user,
-        )
-
-        outstanding_tokens = tokens_qs.exclude(jti=current_jti)
+    def invalidate_previous_tokens(self, user, current_jti):
+        outstanding_tokens = tb_models.OutstandingToken.objects.filter(
+            user=user,
+        ).exclude(jti=current_jti)
 
         for token in outstanding_tokens:
-            (
-                tb_models.BlacklistedToken.objects.get_or_create(
-                    token=token,
-                )
-            )
+            tb_models.BlacklistedToken.objects.get_or_create(token=token)
 
-        data['token_version'] = self.user.token_version
-        return data
+    def update_token_version(self, user):
+        user.token_version += 1
+        user.save()
 
     def get_token(self, user):
         token = super().get_token(user)
