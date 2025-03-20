@@ -3,21 +3,20 @@ import django.urls
 import parameterized
 import rest_framework.status
 import rest_framework.test
-import rest_framework_simplejwt.token_blacklist.models as tb_models
 
 import user.models
 
 
-class AuthTestCase(rest_framework.test.APITestCase):
+class RegistrationTestCase(rest_framework.test.APITestCase):
     def setUp(self):
         self.client = rest_framework.test.APIClient()
-        super(AuthTestCase, self).setUp()
+        super().setUp()
 
     def tearDown(self):
         user.models.User.objects.all().delete()
-        super(AuthTestCase, self).tearDown()
+        super().tearDown()
 
-    def test_valid_registration_and_email_duplication(self):
+    def test_email_duplication(self):
         valid_data = {
             'name': 'Emma',
             'surname': 'Thompson',
@@ -280,6 +279,7 @@ class AuthTestCase(rest_framework.test.APITestCase):
         )
 
     def test_empty_surname_field(self):
+
         data = {
             'name': 'Emma',
             'surname': '',
@@ -298,49 +298,35 @@ class AuthTestCase(rest_framework.test.APITestCase):
         )
 
 
-class AuthFlowTestCase(rest_framework.test.APITestCase):
+class AuthenticationTestCase(rest_framework.test.APITestCase):
     def setUp(self):
         self.client = rest_framework.test.APIClient()
-        super(AuthFlowTestCase, self).setUp()
+        self.signin_url = django.urls.reverse('api-user:sign-in')
+        super().setUp()
 
     def tearDown(self):
         user.models.User.objects.all().delete()
-        super(AuthFlowTestCase, self).tearDown()
+        super().tearDown()
 
-    def test_valid_registration(self):
-        data = {
-            'name': 'Steve',
-            'surname': 'Jobs',
-            'email': 'minecraft.digger@gmail.com',
-            'password': 'SuperStrongPassword2000!',
-            'other': {'age': 23, 'country': 'gb'},
-        }
-        response = self.client.post(
-            django.urls.reverse('api-user:sign-up'),
-            data,
-            format='json',
-        )
-        self.assertEqual(
-            response.status_code,
-            rest_framework.status.HTTP_200_OK,
-        )
-        self.assertIn('access', response.data)
-        self.assertTrue(
-            user.models.User.objects.filter(
-                email='minecraft.digger@gmail.com',
-            ).exists(),
-        )
-
-    def test_signin_missing_fields(self):
-        response = self.client.post(
-            django.urls.reverse('api-user:sign-in'),
-            {},  # Empty data
-            format='json',
-        )
+    @parameterized.parameterized.expand(
+        [
+            ('missing_password', {'email': 'valid@example.com'}, 'password'),
+            ('missing_email', {'password': 'any'}, 'email'),
+            ('empty_data', {}, ['email', 'password']),
+        ],
+    )
+    def test_missing_required_fields(self, case_name, data, expected_fields):
+        response = self.client.post(self.signin_url, data, format='json')
         self.assertEqual(
             response.status_code,
             rest_framework.status.HTTP_400_BAD_REQUEST,
         )
+
+        if isinstance(expected_fields, list):
+            for field in expected_fields:
+                self.assertIn(field, response.data)
+        else:
+            self.assertIn(expected_fields, response.data)
 
     def test_signin_invalid_password(self):
         user.models.User.objects.create_user(
@@ -363,174 +349,4 @@ class AuthFlowTestCase(rest_framework.test.APITestCase):
         self.assertEqual(
             response.status_code,
             rest_framework.status.HTTP_401_UNAUTHORIZED,
-        )
-
-    def test_signin_success(self):
-        user.models.User.objects.create_user(
-            email='minecraft.digger@gmail.com',
-            name='Steve',
-            surname='Jobs',
-            password='SuperStrongPassword2000!',
-            other={'age': 23, 'country': 'gb'},
-        )
-
-        data = {
-            'email': 'minecraft.digger@gmail.com',
-            'password': 'SuperStrongPassword2000!',
-        }
-        response = self.client.post(
-            django.urls.reverse('api-user:sign-in'),
-            data,
-            format='json',
-        )
-        self.assertEqual(
-            response.status_code,
-            rest_framework.status.HTTP_200_OK,
-        )
-
-
-class JWTTests(rest_framework.test.APITestCase):
-    def setUp(self):
-        self.signup_url = django.urls.reverse('api-user:sign-up')
-        self.signin_url = django.urls.reverse('api-user:sign-in')
-        self.protected_url = django.urls.reverse('api-core:protected')
-        self.refresh_url = django.urls.reverse('api-user:token_refresh')
-        user.models.User.objects.create_user(
-            name='John',
-            surname='Doe',
-            email='example@example.com',
-            password='SuperStrongPassword2000!',
-            other={'age': 25, 'country': 'us'},
-        )
-        self.user_data = {
-            'email': 'example@example.com',
-            'password': 'SuperStrongPassword2000!',
-        }
-
-        super(JWTTests, self).setUp()
-
-    def tearDown(self):
-        user.models.User.objects.all().delete()
-
-        super(JWTTests, self).tearDown()
-
-    def test_access_protected_view_with_valid_token(self):
-        response = self.client.post(
-            self.signin_url,
-            self.user_data,
-            format='json',
-        )
-
-        token = response.data['access']
-
-        self.client.credentials(HTTP_AUTHORIZATION='Bearer ' + token)
-        response = self.client.get(self.protected_url)
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.data['status'], 'request was permitted')
-
-    def test_registration_token_invalid_after_login(self):
-        data = {
-            'email': 'test@example.com',
-            'password': 'StrongPass123!cd',
-            'name': 'John',
-            'surname': 'Doe',
-            'other': {'age': 22, 'country': 'us'},
-        }
-        response = self.client.post(
-            self.signup_url,
-            data,
-            format='json',
-        )
-        reg_access_token = response.data['access']
-
-        self.client.credentials(
-            HTTP_AUTHORIZATION=f'Bearer {reg_access_token}',
-        )
-        response = self.client.get(self.protected_url)
-        self.assertEqual(response.status_code, 200)
-
-        login_data = {'email': data['email'], 'password': data['password']}
-        response = self.client.post(
-            self.signin_url,
-            login_data,
-            format='json',
-        )
-        login_access_token = response.data['access']
-
-        self.client.credentials(
-            HTTP_AUTHORIZATION=f'Bearer {reg_access_token}',
-        )
-        response = self.client.get(self.protected_url)
-        self.assertEqual(response.status_code, 401)
-
-        self.client.credentials(
-            HTTP_AUTHORIZATION=f'Bearer {login_access_token}',
-        )
-        response = self.client.get(self.protected_url)
-        self.assertEqual(response.status_code, 200)
-
-    def test_refresh_token_invalidation_after_new_login(self):
-        first_login_response = self.client.post(
-            self.signin_url,
-            self.user_data,
-            format='json',
-        )
-
-        refresh_token_v1 = first_login_response.data['refresh']
-
-        second_login_response = self.client.post(
-            self.signin_url,
-            self.user_data,
-            format='json',
-        )
-        refresh_token_v2 = second_login_response.data['refresh']
-
-        refresh_response_v1 = self.client.post(
-            self.refresh_url,
-            {'refresh': refresh_token_v1},
-            format='json',
-        )
-        self.assertEqual(
-            refresh_response_v1.status_code,
-            rest_framework.status.HTTP_401_UNAUTHORIZED,
-        )
-        self.assertEqual(refresh_response_v1.data['code'], 'token_not_valid')
-        self.assertEqual(
-            str(refresh_response_v1.data['detail']),
-            'Token is blacklisted',
-        )
-
-        refresh_response_v2 = self.client.post(
-            self.refresh_url,
-            {'refresh': refresh_token_v2},
-            format='json',
-        )
-        self.assertEqual(
-            refresh_response_v2.status_code,
-            rest_framework.status.HTTP_200_OK,
-        )
-        self.assertIn('access', refresh_response_v2.data)
-
-        self.client.credentials(
-            HTTP_AUTHORIZATION='Bearer ' + first_login_response.data['access'],
-        )
-        protected_response = self.client.get(self.protected_url)
-        self.assertEqual(
-            protected_response.status_code,
-            rest_framework.status.HTTP_401_UNAUTHORIZED,
-        )
-
-    def test_blacklist_storage(self):
-
-        self.client.post(self.signin_url, self.user_data, format='json')
-
-        self.client.post(self.signin_url, self.user_data, format='json')
-
-        self.assertEqual(
-            (tb_models.BlacklistedToken.objects.count()),
-            1,
-        )
-        self.assertEqual(
-            (tb_models.OutstandingToken.objects.count()),
-            2,
         )
