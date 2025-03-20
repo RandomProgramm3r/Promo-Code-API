@@ -301,22 +301,32 @@ class RegistrationTestCase(rest_framework.test.APITestCase):
 class AuthenticationTestCase(rest_framework.test.APITestCase):
     def setUp(self):
         self.client = rest_framework.test.APIClient()
+        self.signin_url = django.urls.reverse('api-user:sign-in')
         super().setUp()
 
     def tearDown(self):
         user.models.User.objects.all().delete()
         super().tearDown()
 
-    def test_signin_missing_fields(self):
-        response = self.client.post(
-            django.urls.reverse('api-user:sign-in'),
-            {},
-            format='json',
-        )
+    @parameterized.parameterized.expand(
+        [
+            ('missing_password', {'email': 'valid@example.com'}, 'password'),
+            ('missing_email', {'password': 'any'}, 'email'),
+            ('empty_data', {}, ['email', 'password']),
+        ],
+    )
+    def test_missing_required_fields(self, case_name, data, expected_fields):
+        response = self.client.post(self.signin_url, data, format='json')
         self.assertEqual(
             response.status_code,
             rest_framework.status.HTTP_400_BAD_REQUEST,
         )
+
+        if isinstance(expected_fields, list):
+            for field in expected_fields:
+                self.assertIn(field, response.data)
+        else:
+            self.assertIn(expected_fields, response.data)
 
     def test_signin_invalid_password(self):
         user.models.User.objects.create_user(
