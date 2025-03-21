@@ -69,58 +69,37 @@ class RegistrationTestCase(rest_framework.test.APITestCase):
             rest_framework.status.HTTP_400_BAD_REQUEST,
         )
 
-    def test_weak_password_common_phrase(self):
+    @parameterized.parameterized.expand(
+        [
+            ('common_phrase', 'whereismymoney777'),
+            ('missing_special_char', 'fioejifojfieoAAAA9299'),
+            ('too_short', 'Aa7$b!'),
+            ('missing_uppercase', 'lowercase123$'),
+            ('missing_lowercase', 'UPPERCASE123$'),
+            ('missing_digits', 'PasswordSpecial$'),
+            ('non_ascii', 'Päss123$!AAd'),
+            ('emoji', '😎werY!!*Dj3sd'),
+        ],
+    )
+    def test_weak_password_cases(self, case_name, password):
         data = {
             'name': 'Emma',
             'surname': 'Thompson',
-            'email': 'dota.for.fan@gmail.com',
-            'password': 'whereismymoney777',
+            'email': f'test.user+{case_name}@example.com',
+            'password': password,
             'other': {'age': 23, 'country': 'us'},
         }
+
         response = self.client.post(
             django.urls.reverse('api-user:sign-up'),
             data,
             format='json',
-        )
-        self.assertEqual(
-            response.status_code,
-            rest_framework.status.HTTP_400_BAD_REQUEST,
         )
 
-    def test_weak_password_missing_special_char(self):
-        data = {
-            'name': 'Emma',
-            'surname': 'Thompson',
-            'email': 'dota.for.fan@gmail.com',
-            'password': 'fioejifojfieoAAAA9299',
-            'other': {'age': 23, 'country': 'us'},
-        }
-        response = self.client.post(
-            django.urls.reverse('api-user:sign-up'),
-            data,
-            format='json',
-        )
         self.assertEqual(
             response.status_code,
             rest_framework.status.HTTP_400_BAD_REQUEST,
-        )
-
-    def test_weak_password_too_short(self):
-        data = {
-            'name': 'Emma',
-            'surname': 'Thompson',
-            'email': 'dota.for.fan@gmail.com',
-            'password': 'Aa7$b!',
-            'other': {'age': 23, 'country': 'us'},
-        }
-        response = self.client.post(
-            django.urls.reverse('api-user:sign-up'),
-            data,
-            format='json',
-        )
-        self.assertEqual(
-            response.status_code,
-            rest_framework.status.HTTP_400_BAD_REQUEST,
+            f'Failed for case: {case_name}. Response: {response.data}',
         )
 
     def generate_test_cases():

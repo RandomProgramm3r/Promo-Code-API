@@ -50,7 +50,7 @@ AUTH_USER_MODEL = 'user.User'
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
-        'user.authentication.CustomJWTAuthentication'
+        'user.authentication.CustomJWTAuthentication',
     ],
 }
 
@@ -160,16 +160,23 @@ AUTH_PASSWORD_VALIDATORS = [
         '.NumericPasswordValidator',
     },
     {
+        'NAME': 'promo_code.validators.ASCIIOnlyPasswordValidator',
+    },
+    {
         'NAME': 'promo_code.validators.SpecialCharacterPasswordValidator',
+        'OPTIONS': {'min_count': 1},
     },
     {
         'NAME': 'promo_code.validators.NumericPasswordValidator',
+        'OPTIONS': {'min_count': 1},
     },
     {
-        'NAME': 'promo_code.validators.LatinLetterPasswordValidator',
+        'NAME': 'promo_code.validators.LowercaseLatinLetterPasswordValidator',
+        'OPTIONS': {'min_count': 1},
     },
     {
         'NAME': 'promo_code.validators.UppercaseLatinLetterPasswordValidator',
+        'OPTIONS': {'min_count': 1},
     },
 ]
 

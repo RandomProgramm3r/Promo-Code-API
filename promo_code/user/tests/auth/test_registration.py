@@ -14,7 +14,7 @@ class RegistrationTests(rest_framework.test.APITestCase):
         user.models.User.objects.all().delete()
         super().tearDown()
 
-    def test_valid_registration(self):
+    def test_registration_success(self):
         valid_data = {
             'name': 'Emma',
             'surname': 'Thompson',
