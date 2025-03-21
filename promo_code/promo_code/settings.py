@@ -50,7 +50,7 @@ AUTH_USER_MODEL = 'user.User'
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
+        'user.authentication.CustomJWTAuthentication'
     ],
 }
 
@@ -108,7 +108,6 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'user.middleware.TokenVersionMiddleware',
 ]
 
 ROOT_URLCONF = 'promo_code.urls'
