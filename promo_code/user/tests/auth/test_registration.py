@@ -1,20 +1,12 @@
-import django.urls
 import rest_framework.status
 import rest_framework.test
 
 import user.models
+import user.tests.auth.base
 
 
-class RegistrationTests(rest_framework.test.APITestCase):
-    def setUp(self):
-        self.client = rest_framework.test.APIClient()
-        super().setUp()
-
-    def tearDown(self):
-        user.models.User.objects.all().delete()
-        super().tearDown()
-
-    def test_valid_registration(self):
+class RegistrationTests(user.tests.auth.base.BaseAuthTestCase):
+    def test_registration_success(self):
         valid_data = {
             'name': 'Emma',
             'surname': 'Thompson',
@@ -23,7 +15,7 @@ class RegistrationTests(rest_framework.test.APITestCase):
             'other': {'age': 23, 'country': 'us'},
         }
         response = self.client.post(
-            django.urls.reverse('api-user:sign-up'),
+            self.signup_url,
             valid_data,
             format='json',
         )

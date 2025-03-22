@@ -1,21 +1,12 @@
-import django.test
-import django.urls
 import parameterized
 import rest_framework.status
 import rest_framework.test
 
 import user.models
+import user.tests.auth.base
 
 
-class RegistrationTestCase(rest_framework.test.APITestCase):
-    def setUp(self):
-        self.client = rest_framework.test.APIClient()
-        super().setUp()
-
-    def tearDown(self):
-        user.models.User.objects.all().delete()
-        super().tearDown()
-
+class RegistrationTestCase(user.tests.auth.base.BaseAuthTestCase):
     def test_email_duplication(self):
         valid_data = {
             'name': 'Emma',
@@ -25,7 +16,7 @@ class RegistrationTestCase(rest_framework.test.APITestCase):
             'other': {'age': 23, 'country': 'us'},
         }
         response = self.client.post(
-            django.urls.reverse('api-user:sign-up'),
+            self.signup_url,
             valid_data,
             format='json',
         )
@@ -42,7 +33,7 @@ class RegistrationTestCase(rest_framework.test.APITestCase):
             'other': {'age': 14, 'country': 'fr'},
         }
         response = self.client.post(
-            django.urls.reverse('api-user:sign-up'),
+            self.signup_url,
             duplicate_data,
             format='json',
         )
@@ -60,7 +51,7 @@ class RegistrationTestCase(rest_framework.test.APITestCase):
             'other': {'age': 23, 'country': 'us'},
         }
         response = self.client.post(
-            django.urls.reverse('api-user:sign-up'),
+            self.signup_url,
             data,
             format='json',
         )
@@ -69,58 +60,37 @@ class RegistrationTestCase(rest_framework.test.APITestCase):
             rest_framework.status.HTTP_400_BAD_REQUEST,
         )
 
-    def test_weak_password_common_phrase(self):
+    @parameterized.parameterized.expand(
+        [
+            ('common_phrase', 'whereismymoney777'),
+            ('missing_special_char', 'fioejifojfieoAAAA9299'),
+            ('too_short', 'Aa7$b!'),
+            ('missing_uppercase', 'lowercase123$'),
+            ('missing_lowercase', 'UPPERCASE123$'),
+            ('missing_digits', 'PasswordSpecial$'),
+            ('non_ascii', 'Päss123$!AAd'),
+            ('emoji', '😎werY!!*Dj3sd'),
+        ],
+    )
+    def test_weak_password_cases(self, case_name, password):
         data = {
             'name': 'Emma',
             'surname': 'Thompson',
-            'email': 'dota.for.fan@gmail.com',
-            'password': 'whereismymoney777',
+            'email': f'test.user+{case_name}@example.com',
+            'password': password,
             'other': {'age': 23, 'country': 'us'},
         }
+
         response = self.client.post(
-            django.urls.reverse('api-user:sign-up'),
+            self.signup_url,
             data,
             format='json',
-        )
-        self.assertEqual(
-            response.status_code,
-            rest_framework.status.HTTP_400_BAD_REQUEST,
         )
 
-    def test_weak_password_missing_special_char(self):
-        data = {
-            'name': 'Emma',
-            'surname': 'Thompson',
-            'email': 'dota.for.fan@gmail.com',
-            'password': 'fioejifojfieoAAAA9299',
-            'other': {'age': 23, 'country': 'us'},
-        }
-        response = self.client.post(
-            django.urls.reverse('api-user:sign-up'),
-            data,
-            format='json',
-        )
         self.assertEqual(
             response.status_code,
             rest_framework.status.HTTP_400_BAD_REQUEST,
-        )
-
-    def test_weak_password_too_short(self):
-        data = {
-            'name': 'Emma',
-            'surname': 'Thompson',
-            'email': 'dota.for.fan@gmail.com',
-            'password': 'Aa7$b!',
-            'other': {'age': 23, 'country': 'us'},
-        }
-        response = self.client.post(
-            django.urls.reverse('api-user:sign-up'),
-            data,
-            format='json',
-        )
-        self.assertEqual(
-            response.status_code,
-            rest_framework.status.HTTP_400_BAD_REQUEST,
+            f'Failed for case: {case_name}. Response: {response.data}',
         )
 
     def generate_test_cases():
@@ -148,7 +118,7 @@ class RegistrationTestCase(rest_framework.test.APITestCase):
         }
 
         response = self.client.post(
-            django.urls.reverse('api-user:sign-up'),
+            self.signup_url,
             data,
             format='json',
         )
@@ -168,13 +138,37 @@ class RegistrationTestCase(rest_framework.test.APITestCase):
             'other': {'age': 23},
         }
         response = self.client.post(
-            django.urls.reverse('api-user:sign-up'),
+            self.signup_url,
             data,
             format='json',
         )
         self.assertEqual(
             response.status_code,
             rest_framework.status.HTTP_400_BAD_REQUEST,
+        )
+
+    def test_invalid_country_code(self):
+        invalid_data = {
+            'name': 'Emma',
+            'surname': 'Thompson',
+            'email': 'test.invalid.country@example.com',
+            'password': 'SuperStrongPassword2000!',
+            'other': {
+                'age': 23,
+                'country': 'XX',
+            },
+        }
+
+        response = self.client.post(
+            self.signup_url,
+            invalid_data,
+            format='json',
+        )
+
+        self.assertEqual(
+            response.status_code,
+            rest_framework.status.HTTP_400_BAD_REQUEST,
+            'Invalid country code should trigger validation error',
         )
 
     def test_invalid_age_type(self):
@@ -186,7 +180,7 @@ class RegistrationTestCase(rest_framework.test.APITestCase):
             'other': {'age': '23aaaaaa', 'country': 'us'},
         }
         response = self.client.post(
-            django.urls.reverse('api-user:sign-up'),
+            self.signup_url,
             data,
             format='json',
         )
@@ -204,7 +198,7 @@ class RegistrationTestCase(rest_framework.test.APITestCase):
             'other': {'country': 'us'},
         }
         response = self.client.post(
-            django.urls.reverse('api-user:sign-up'),
+            self.signup_url,
             data,
             format='json',
         )
@@ -222,7 +216,7 @@ class RegistrationTestCase(rest_framework.test.APITestCase):
             'other': {'age': -20, 'country': 'us'},
         }
         response = self.client.post(
-            django.urls.reverse('api-user:sign-up'),
+            self.signup_url,
             data,
             format='json',
         )
@@ -249,7 +243,7 @@ class RegistrationTestCase(rest_framework.test.APITestCase):
         }
 
         response = self.client.post(
-            django.urls.reverse('api-user:sign-up'),
+            self.signup_url,
             data,
             format='json',
         )
@@ -269,7 +263,7 @@ class RegistrationTestCase(rest_framework.test.APITestCase):
             'other': {'age': 23, 'country': 'us'},
         }
         response = self.client.post(
-            django.urls.reverse('api-user:sign-up'),
+            self.signup_url,
             data,
             format='json',
         )
@@ -288,7 +282,7 @@ class RegistrationTestCase(rest_framework.test.APITestCase):
             'other': {'age': 23, 'country': 'us'},
         }
         response = self.client.post(
-            django.urls.reverse('api-user:sign-up'),
+            self.signup_url,
             data,
             format='json',
         )
@@ -298,16 +292,7 @@ class RegistrationTestCase(rest_framework.test.APITestCase):
         )
 
 
-class AuthenticationTestCase(rest_framework.test.APITestCase):
-    def setUp(self):
-        self.client = rest_framework.test.APIClient()
-        self.signin_url = django.urls.reverse('api-user:sign-in')
-        super().setUp()
-
-    def tearDown(self):
-        user.models.User.objects.all().delete()
-        super().tearDown()
-
+class AuthenticationTestCase(user.tests.auth.base.BaseAuthTestCase):
     @parameterized.parameterized.expand(
         [
             ('missing_password', {'email': 'valid@example.com'}, 'password'),
@@ -342,7 +327,7 @@ class AuthenticationTestCase(rest_framework.test.APITestCase):
             'password': 'SuperInvalidPassword2000!',
         }
         response = self.client.post(
-            django.urls.reverse('api-user:sign-in'),
+            self.signin_url,
             data,
             format='json',
         )

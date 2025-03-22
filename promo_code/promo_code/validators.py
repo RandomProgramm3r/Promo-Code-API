@@ -1,6 +1,5 @@
 import abc
 import re
-import unicodedata
 
 import django.core.exceptions
 from django.utils.translation import gettext as _
@@ -135,27 +134,27 @@ class NumericPasswordValidator(BaseCountPasswordValidator):
         return _(f'Password must contain at least {self.min_count} digit(s).')
 
 
-class LatinLetterPasswordValidator(BaseCountPasswordValidator):
+class LowercaseLatinLetterPasswordValidator(BaseCountPasswordValidator):
     """
-    Validates presence of minimum required Latin letters (ASCII)
+    Validates presence of minimum required lowercase Latin letters
 
     Args:
-        min_count (int): Minimum required letters (default: 1)
+        min_count (int): Minimum required lowercase letters (default: 1)
     """
 
     def __init__(self, min_count=1):
         super().__init__(min_count)
-        self.code = 'password_no_latin_letter'
+        self.code = 'password_no_lowercase_latin'
 
     def validate_char(self, char) -> bool:
-        """Check if character is a Latin ASCII letter"""
-        return unicodedata.category(char).startswith('L') and char.isascii()
+        """Check if character is lower Latin letter"""
+        return char.islower() and char.isascii()
 
     def get_help_text(self) -> str:
         return _(
             (
                 f'Your password must contain at least {self.min_count} '
-                'Latin letter(s).'
+                'lowercase Latin letter(s).'
             ),
         )
 
@@ -163,7 +162,7 @@ class LatinLetterPasswordValidator(BaseCountPasswordValidator):
         return _(
             (
                 f'Password must contain at least {self.min_count} '
-                'Latin letter(s).'
+                'lowercase Latin letter(s).'
             ),
         )
 
@@ -197,5 +196,42 @@ class UppercaseLatinLetterPasswordValidator(BaseCountPasswordValidator):
             (
                 f'Password must contain at least {self.min_count} '
                 'uppercase Latin letter(s).'
+            ),
+        )
+
+
+class ASCIIOnlyPasswordValidator:
+    """
+    Validates that password contains only ASCII characters
+
+    Example:
+    - Valid: 'Passw0rd!123'
+    - Invalid: 'Pässwörd§123'
+    """
+
+    code = 'password_not_only_ascii_characters'
+
+    def validate(self, password, user=None) -> bool:
+        try:
+            password.encode('ascii', errors='strict')
+        except UnicodeEncodeError:
+            raise django.core.exceptions.ValidationError(
+                _('Password contains non-ASCII characters'),
+                code=self.code,
+            )
+
+    def get_help_text(self) -> str:
+        return _(
+            (
+                'Your password must contain only standard English letters, '
+                'digits and punctuation symbols (ASCII character set)'
+            ),
+        )
+
+    def get_error_message(self) -> str:
+        return _(
+            (
+                'Your password must contain only standard English letters, '
+                'digits and punctuation symbols (ASCII character set)'
             ),
         )
