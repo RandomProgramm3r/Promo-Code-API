@@ -1,18 +1,14 @@
-import django.test
-import django.urls
 import rest_framework.status
 import rest_framework.test
 import rest_framework_simplejwt.token_blacklist.models as tb_models
 
 import user.models
+import user.tests.auth.base
 
 
-class JWTTests(rest_framework.test.APITestCase):
+class JWTTests(user.tests.auth.base.BaseAuthTestCase):
     def setUp(self):
-        self.signup_url = django.urls.reverse('api-user:sign-up')
-        self.signin_url = django.urls.reverse('api-user:sign-in')
-        self.protected_url = django.urls.reverse('api-core:protected')
-        self.refresh_url = django.urls.reverse('api-user:token_refresh')
+        super().setUp()
         user.models.User.objects.create_user(
             name='John',
             surname='Doe',
@@ -20,17 +16,11 @@ class JWTTests(rest_framework.test.APITestCase):
             password='SuperStrongPassword2000!',
             other={'age': 25, 'country': 'us'},
         )
+
         self.user_data = {
             'email': 'example@example.com',
             'password': 'SuperStrongPassword2000!',
         }
-
-        super(JWTTests, self).setUp()
-
-    def tearDown(self):
-        user.models.User.objects.all().delete()
-
-        super(JWTTests, self).tearDown()
 
     def test_access_protected_view_with_valid_token(self):
         response = self.client.post(
