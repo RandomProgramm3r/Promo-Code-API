@@ -1,5 +1,3 @@
-import django.test
-import django.urls
 import rest_framework.status
 import rest_framework.test
 
@@ -22,7 +20,7 @@ class AuthenticationTests(user.tests.auth.base.BaseAuthTestCase):
             'password': 'SuperStrongPassword2000!',
         }
         response = self.client.post(
-            django.urls.reverse('api-user:sign-in'),
+            self.signin_url,
             data,
             format='json',
         )

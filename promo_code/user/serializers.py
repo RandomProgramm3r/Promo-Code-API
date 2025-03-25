@@ -21,11 +21,20 @@ class SignUpSerializer(rest_framework.serializers.ModelSerializer):
         min_length=8,
         style={'input_type': 'password'},
     )
-    name = rest_framework.serializers.CharField(required=True, min_length=1)
-    surname = rest_framework.serializers.CharField(required=True, min_length=1)
+    name = rest_framework.serializers.CharField(
+        required=True,
+        min_length=1,
+        max_length=100,
+    )
+    surname = rest_framework.serializers.CharField(
+        required=True,
+        min_length=1,
+        max_length=120,
+    )
     email = rest_framework.serializers.EmailField(
         required=True,
         min_length=8,
+        max_length=120,
         validators=[
             user.validators.UniqueEmailValidator(
                 'This email address is already registered.',

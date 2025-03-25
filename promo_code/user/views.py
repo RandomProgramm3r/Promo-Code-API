@@ -7,21 +7,12 @@ import rest_framework_simplejwt.exceptions
 import rest_framework_simplejwt.tokens
 import rest_framework_simplejwt.views
 
+import core.views
 import user.serializers
 
 
-class BaseCustomResponseMixin:
-    error_response = {'status': 'error', 'message': 'Error in request data.'}
-
-    def handle_validation_error(self):
-        return rest_framework.response.Response(
-            self.error_response,
-            status=rest_framework.status.HTTP_400_BAD_REQUEST,
-        )
-
-
 class SignUpView(
-    BaseCustomResponseMixin,
+    core.views.BaseCustomResponseMixin,
     rest_framework.generics.CreateAPIView,
 ):
     serializer_class = user.serializers.SignUpSerializer
@@ -47,7 +38,7 @@ class SignUpView(
 
 
 class SignInView(
-    BaseCustomResponseMixin,
+    core.views.BaseCustomResponseMixin,
     rest_framework_simplejwt.views.TokenObtainPairView,
 ):
     serializer_class = user.serializers.SignInSerializer
