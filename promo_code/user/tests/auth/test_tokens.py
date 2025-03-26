@@ -6,7 +6,7 @@ import user.models
 import user.tests.auth.base
 
 
-class JWTTests(user.tests.auth.base.BaseAuthTestCase):
+class JWTTests(user.tests.auth.base.BaseUserAuthTestCase):
     def setUp(self):
         super().setUp()
         user.models.User.objects.create_user(
@@ -33,7 +33,10 @@ class JWTTests(user.tests.auth.base.BaseAuthTestCase):
 
         self.client.credentials(HTTP_AUTHORIZATION='Bearer ' + token)
         response = self.client.get(self.protected_url)
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.status_code,
+            rest_framework.status.HTTP_200_OK,
+        )
         self.assertEqual(response.data['status'], 'request was permitted')
 
     def test_registration_token_invalid_after_login(self):
@@ -55,7 +58,10 @@ class JWTTests(user.tests.auth.base.BaseAuthTestCase):
             HTTP_AUTHORIZATION=f'Bearer {reg_access_token}',
         )
         response = self.client.get(self.protected_url)
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.status_code,
+            rest_framework.status.HTTP_200_OK,
+        )
 
         login_data = {'email': data['email'], 'password': data['password']}
         response = self.client.post(
@@ -69,13 +75,19 @@ class JWTTests(user.tests.auth.base.BaseAuthTestCase):
             HTTP_AUTHORIZATION=f'Bearer {reg_access_token}',
         )
         response = self.client.get(self.protected_url)
-        self.assertEqual(response.status_code, 401)
+        self.assertEqual(
+            response.status_code,
+            rest_framework.status.HTTP_401_UNAUTHORIZED,
+        )
 
         self.client.credentials(
             HTTP_AUTHORIZATION=f'Bearer {login_access_token}',
         )
         response = self.client.get(self.protected_url)
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.status_code,
+            rest_framework.status.HTTP_200_OK,
+        )
 
     def test_refresh_token_invalidation_after_new_login(self):
         first_login_response = self.client.post(

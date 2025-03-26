@@ -5,7 +5,7 @@ import user.models
 import user.tests.auth.base
 
 
-class AuthenticationTests(user.tests.auth.base.BaseAuthTestCase):
+class UserAuthenticationTests(user.tests.auth.base.BaseUserAuthTestCase):
     def test_signin_success(self):
         user.models.User.objects.create_user(
             email='minecraft.digger@gmail.com',
