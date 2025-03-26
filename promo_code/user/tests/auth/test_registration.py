@@ -5,7 +5,7 @@ import user.models
 import user.tests.auth.base
 
 
-class RegistrationTests(user.tests.auth.base.BaseAuthTestCase):
+class UserRegistrationTests(user.tests.auth.base.BaseUserAuthTestCase):
     def test_registration_success(self):
         valid_data = {
             'name': 'Emma',

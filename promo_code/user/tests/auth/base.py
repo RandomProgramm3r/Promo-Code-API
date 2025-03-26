@@ -5,7 +5,7 @@ import rest_framework_simplejwt.token_blacklist.models as tb_models
 import user.models
 
 
-class BaseAuthTestCase(rest_framework.test.APITestCase):
+class BaseUserAuthTestCase(rest_framework.test.APITestCase):
     @classmethod
     def setUpTestData(cls):
         super().setUpTestData()

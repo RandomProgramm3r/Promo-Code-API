@@ -6,7 +6,9 @@ import user.models
 import user.tests.auth.base
 
 
-class RegistrationTestCase(user.tests.auth.base.BaseAuthTestCase):
+class InvalidUserRegistrationTestCase(
+    user.tests.auth.base.BaseUserAuthTestCase,
+):
     def test_email_duplication(self):
         valid_data = {
             'name': 'Emma',
@@ -40,24 +42,6 @@ class RegistrationTestCase(user.tests.auth.base.BaseAuthTestCase):
         self.assertEqual(
             response.status_code,
             rest_framework.status.HTTP_409_CONFLICT,
-        )
-
-    def test_invalid_email_format(self):
-        data = {
-            'name': 'Emma',
-            'surname': 'Thompson',
-            'email': 'dota.fan',
-            'password': 'SuperStrongPassword2000!',
-            'other': {'age': 23, 'country': 'us'},
-        }
-        response = self.client.post(
-            self.signup_url,
-            data,
-            format='json',
-        )
-        self.assertEqual(
-            response.status_code,
-            rest_framework.status.HTTP_400_BAD_REQUEST,
         )
 
     @parameterized.parameterized.expand(
@@ -292,7 +276,9 @@ class RegistrationTestCase(user.tests.auth.base.BaseAuthTestCase):
         )
 
 
-class AuthenticationTestCase(user.tests.auth.base.BaseAuthTestCase):
+class InvalidUserAuthenticationTestCase(
+    user.tests.auth.base.BaseUserAuthTestCase,
+):
     @parameterized.parameterized.expand(
         [
             ('missing_password', {'email': 'valid@example.com'}, 'password'),
