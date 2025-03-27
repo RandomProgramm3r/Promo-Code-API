@@ -6,6 +6,10 @@ import django.core.validators
 import rest_framework.exceptions
 import rest_framework.serializers
 import rest_framework.status
+import rest_framework_simplejwt.exceptions
+import rest_framework_simplejwt.serializers
+import rest_framework_simplejwt.tokens
+import rest_framework_simplejwt.views
 
 
 class CompanySignUpSerializer(rest_framework.serializers.ModelSerializer):
@@ -90,3 +94,39 @@ class CompanySignInSerializer(
             )
 
         return attrs
+
+
+class CompanyTokenRefreshSerializer(
+    rest_framework_simplejwt.serializers.TokenRefreshSerializer,
+):
+    def validate(self, attrs):
+        refresh = rest_framework_simplejwt.tokens.RefreshToken(
+            attrs['refresh'],
+        )
+        user_type = refresh.payload.get('user_type', 'user')
+
+        if user_type != 'company':
+            raise rest_framework_simplejwt.exceptions.InvalidToken(
+                'This refresh endpoint is for company tokens only',
+            )
+
+        company_id = refresh.payload.get('company_id')
+        if not company_id:
+            raise rest_framework_simplejwt.exceptions.InvalidToken(
+                'Company ID missing in token',
+            )
+
+        try:
+            company = business_models.Company.objects.get(id=company_id)
+        except business_models.Company.DoesNotExist:
+            raise rest_framework_simplejwt.exceptions.InvalidToken(
+                'Company not found',
+            )
+
+        token_version = refresh.payload.get('token_version', 0)
+        if company.token_version != token_version:
+            raise rest_framework_simplejwt.exceptions.InvalidToken(
+                'Token is blacklisted',
+            )
+
+        return super().validate(attrs)

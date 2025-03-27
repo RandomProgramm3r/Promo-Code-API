@@ -15,4 +15,9 @@ urlpatterns = [
         business.views.CompanySignInView.as_view(),
         name='company-sign-in',
     ),
+    django.urls.path(
+        'token/refresh',
+        business.views.CompanyTokenRefreshView.as_view(),
+        name='company-token-refresh',
+    ),
 ]

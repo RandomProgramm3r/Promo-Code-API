@@ -97,3 +97,7 @@ class CompanySignInView(
             response_data,
             status=rest_framework.status.HTTP_200_OK,
         )
+
+
+class CompanyTokenRefreshView(rest_framework_simplejwt.views.TokenRefreshView):
+    serializer_class = business.serializers.CompanyTokenRefreshSerializer

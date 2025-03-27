@@ -10,9 +10,12 @@ class BaseBusinessAuthTestCase(rest_framework.test.APITestCase):
     def setUpTestData(cls):
         super().setUpTestData()
         cls.client = rest_framework.test.APIClient()
+        cls.company_refresh_url = django.urls.reverse(
+            'api-business:company-token-refresh',
+        )
+        cls.protected_url = django.urls.reverse('api-core:protected')
         cls.signup_url = django.urls.reverse('api-business:company-sign-up')
         cls.signin_url = django.urls.reverse('api-business:company-sign-in')
-        cls.protected_url = django.urls.reverse('api-core:protected')
         cls.valid_data = {
             'name': 'Digital Marketing Solutions Inc.',
             'email': 'testcompany@example.com',

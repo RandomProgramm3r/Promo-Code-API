@@ -11,7 +11,7 @@ class BaseUserAuthTestCase(rest_framework.test.APITestCase):
         super().setUpTestData()
         cls.client = rest_framework.test.APIClient()
         cls.protected_url = django.urls.reverse('api-core:protected')
-        cls.refresh_url = django.urls.reverse('api-user:token_refresh')
+        cls.refresh_url = django.urls.reverse('api-user:user-token-refresh')
         cls.signup_url = django.urls.reverse('api-user:sign-up')
         cls.signin_url = django.urls.reverse('api-user:sign-in')
 
