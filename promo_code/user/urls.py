@@ -20,6 +20,6 @@ urlpatterns = [
     django.urls.path(
         'token/refresh/',
         rest_framework_simplejwt.views.TokenRefreshView.as_view(),
-        name='token_refresh',
+        name='user-token-refresh',
     ),
 ]
