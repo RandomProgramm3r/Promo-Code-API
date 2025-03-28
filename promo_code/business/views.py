@@ -1,7 +1,9 @@
 import business.models
+import business.permissions
 import business.serializers
 import rest_framework.exceptions
 import rest_framework.generics
+import rest_framework.permissions
 import rest_framework.response
 import rest_framework.serializers
 import rest_framework.status
@@ -101,3 +103,28 @@ class CompanySignInView(
 
 class CompanyTokenRefreshView(rest_framework_simplejwt.views.TokenRefreshView):
     serializer_class = business.serializers.CompanyTokenRefreshSerializer
+
+
+class PromoCreateView(rest_framework.views.APIView):
+    permission_classes = [
+        rest_framework.permissions.IsAuthenticated,
+        business.permissions.IsCompanyUser,
+    ]
+    serializer_class = business.serializers.PromoCreateSerializer
+
+    def post(self, request, *args, **kwargs):
+        serializer = self.serializer_class(
+            data=request.data,
+            context={'request': request},
+        )
+        if serializer.is_valid():
+            instance = serializer.save()
+            return rest_framework.response.Response(
+                {'id': instance.id},
+                status=rest_framework.status.HTTP_201_CREATED,
+            )
+
+        return rest_framework.response.Response(
+            serializer.errors,
+            status=rest_framework.status.HTTP_400_BAD_REQUEST,
+        )
