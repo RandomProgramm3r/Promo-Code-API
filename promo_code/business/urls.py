@@ -1,5 +1,6 @@
-import business.views
 import django.urls
+
+import business.views
 
 app_name = 'api-business'
 

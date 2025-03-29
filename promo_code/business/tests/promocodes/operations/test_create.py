@@ -1,5 +1,6 @@
-import business.tests.promocodes.base
 import rest_framework.status
+
+import business.tests.promocodes.base
 
 
 class TestSuccessfulPromoCreation(

@@ -1,6 +1,3 @@
-import business.models
-import business.permissions
-import business.serializers
 import rest_framework.exceptions
 import rest_framework.generics
 import rest_framework.permissions
@@ -11,6 +8,9 @@ import rest_framework_simplejwt.exceptions
 import rest_framework_simplejwt.tokens
 import rest_framework_simplejwt.views
 
+import business.models
+import business.permissions
+import business.serializers
 import core.views
 
 

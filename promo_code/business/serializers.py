@@ -1,5 +1,3 @@
-import business.models as business_models
-import business.validators
 import django.contrib.auth.password_validation
 import django.core.exceptions
 import django.core.validators
@@ -11,6 +9,9 @@ import rest_framework_simplejwt.exceptions
 import rest_framework_simplejwt.serializers
 import rest_framework_simplejwt.tokens
 import rest_framework_simplejwt.views
+
+import business.models as business_models
+import business.validators
 
 
 class CompanySignUpSerializer(rest_framework.serializers.ModelSerializer):

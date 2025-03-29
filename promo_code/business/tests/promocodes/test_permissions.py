@@ -1,10 +1,10 @@
-import business.models
-import business.permissions
-import business.tests.promocodes.base
 import django.contrib.auth
 import rest_framework.status
 import rest_framework.test
 
+import business.models
+import business.permissions
+import business.tests.promocodes.base
 import user.models
 
 

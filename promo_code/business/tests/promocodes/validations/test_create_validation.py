@@ -1,6 +1,7 @@
-import business.tests.promocodes.base
 import parameterized
 import rest_framework.status
+
+import business.tests.promocodes.base
 
 
 class TestPromoCodeCreation(

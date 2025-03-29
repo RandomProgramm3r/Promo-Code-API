@@ -1,7 +1,8 @@
-import business.models
-import business.tests.auth.base
 import rest_framework.status
 import rest_framework.test
+
+import business.models
+import business.tests.auth.base
 
 
 class AuthenticationTests(business.tests.auth.base.BaseBusinessAuthTestCase):

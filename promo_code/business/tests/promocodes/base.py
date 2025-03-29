@@ -1,8 +1,9 @@
-import business.models
 import django.urls
 import rest_framework
 import rest_framework.status
 import rest_framework.test
+
+import business.models
 
 
 class BasePromoCreateTestCase(rest_framework.test.APITestCase):
