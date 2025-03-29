@@ -1,7 +1,7 @@
-import business.models
 import rest_framework_simplejwt.authentication
 import rest_framework_simplejwt.exceptions
 
+import business.models
 import user.models as user_models
 
 

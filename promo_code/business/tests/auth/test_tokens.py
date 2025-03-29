@@ -1,9 +1,9 @@
-import business.models
-import business.tests.auth.base
 import rest_framework.status
 import rest_framework.test
 import rest_framework_simplejwt.tokens
 
+import business.models
+import business.tests.auth.base
 import user.models
 
 

@@ -1,5 +1,3 @@
-import business.models as business_models
-import business.validators
 import django.contrib.auth.password_validation
 import django.core.exceptions
 import django.core.validators
@@ -11,6 +9,9 @@ import rest_framework_simplejwt.exceptions
 import rest_framework_simplejwt.serializers
 import rest_framework_simplejwt.tokens
 import rest_framework_simplejwt.views
+
+import business.models as business_models
+import business.validators
 
 
 class CompanySignUpSerializer(rest_framework.serializers.ModelSerializer):
@@ -147,6 +148,8 @@ class TargetSerializer(rest_framework.serializers.Serializer):
         allow_null=True,
     )
     country = rest_framework.serializers.CharField(
+        max_length=2,
+        min_length=2,
         required=False,
         allow_null=True,
         allow_blank=True,
@@ -173,7 +176,6 @@ class TargetSerializer(rest_framework.serializers.Serializer):
                 {'age_until': 'Must be greater than or equal to age_from.'},
             )
 
-        # change validation
         country = data.get('country')
         if country:
             country = country.strip().upper()
@@ -189,6 +191,18 @@ class TargetSerializer(rest_framework.serializers.Serializer):
 
 
 class PromoCreateSerializer(rest_framework.serializers.ModelSerializer):
+    description = rest_framework.serializers.CharField(
+        min_length=10,
+        max_length=300,
+        required=True,
+    )
+    image_url = rest_framework.serializers.CharField(
+        required=False,
+        max_length=350,
+        validators=[
+            django.core.validators.URLValidator(schemes=['http', 'https']),
+        ],
+    )
     target = TargetSerializer(required=True)
     promo_common = rest_framework.serializers.CharField(
         min_length=5,
@@ -220,10 +234,6 @@ class PromoCreateSerializer(rest_framework.serializers.ModelSerializer):
             'promo_common',
             'promo_unique',
         )
-        extra_kwargs = {
-            'description': {'min_length': 10, 'max_length': 300},
-            'image_url': {'max_length': 350},
-        }
 
     def validate(self, data):
         mode = data.get('mode')

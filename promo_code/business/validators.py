@@ -1,5 +1,6 @@
-import business.models
 import rest_framework.exceptions
+
+import business.models
 
 
 class UniqueEmailValidator:
