@@ -109,7 +109,7 @@ class TestCompanyTokenRefresh(
         self.company_refresh.payload.update(
             {
                 'user_type': 'company',
-                'company_id': self.company.id,
+                'company_id': str(self.company.id),
                 'token_version': self.company.token_version,
             },
         )
@@ -194,7 +194,11 @@ class TestCompanyTokenRefresh(
     def test_company_not_found(self):
         invalid_refresh = rest_framework_simplejwt.tokens.RefreshToken()
         invalid_refresh.payload.update(
-            {'user_type': 'company', 'company_id': 999, 'token_version': 1},
+            {
+                'user_type': 'company',
+                'company_id': 'da3ad08d-9b86-41ff-ad70-a30a64d3d170',
+                'token_version': 1,
+            },
         )
 
         response = self.client.post(
