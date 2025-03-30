@@ -37,12 +37,12 @@ class CompanySignUpView(
 
         refresh = rest_framework_simplejwt.tokens.RefreshToken()
         refresh['user_type'] = 'company'
-        refresh['company_id'] = company.id
+        refresh['company_id'] = str(company.id)
         refresh['token_version'] = company.token_version
 
         access_token = refresh.access_token
         access_token['user_type'] = 'company'
-        access_token['company_id'] = company.id
+        access_token['company_id'] = str(company.id)
         refresh['token_version'] = company.token_version
 
         response_data = {
@@ -83,12 +83,12 @@ class CompanySignInView(
 
         refresh = rest_framework_simplejwt.tokens.RefreshToken()
         refresh['user_type'] = 'company'
-        refresh['company_id'] = company.id
+        refresh['company_id'] = str(company.id)
         refresh['token_version'] = company.token_version
 
         access_token = refresh.access_token
         access_token['user_type'] = 'company'
-        access_token['company_id'] = company.id
+        access_token['company_id'] = str(company.id)
 
         response_data = {
             'access': str(access_token),
@@ -120,7 +120,7 @@ class PromoCreateView(rest_framework.views.APIView):
         if serializer.is_valid():
             instance = serializer.save()
             return rest_framework.response.Response(
-                {'id': instance.id},
+                {'id': str(instance.id)},
                 status=rest_framework.status.HTTP_201_CREATED,
             )
 

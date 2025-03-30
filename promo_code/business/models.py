@@ -1,3 +1,5 @@
+import uuid
+
 import django.contrib.auth.models
 import django.db.models
 
@@ -19,6 +21,12 @@ class CompanyManager(django.contrib.auth.models.BaseUserManager):
 
 
 class Company(django.contrib.auth.models.AbstractBaseUser):
+    id = django.db.models.UUIDField(
+        'UUID',
+        primary_key=True,
+        default=uuid.uuid4,
+        editable=False,
+    )
     email = django.db.models.EmailField(
         unique=True,
         max_length=120,
@@ -45,6 +53,13 @@ class Promo(django.db.models.Model):
         (MODE_COMMON, 'Common'),
         (MODE_UNIQUE, 'Unique'),
     ]
+
+    id = django.db.models.UUIDField(
+        'UUID',
+        primary_key=True,
+        default=uuid.uuid4,
+        editable=False,
+    )
 
     company = django.db.models.ForeignKey(
         Company,
@@ -81,6 +96,7 @@ class PromoCode(django.db.models.Model):
         Promo,
         on_delete=django.db.models.CASCADE,
         related_name='unique_codes',
+        to_field='id',
     )
     code = django.db.models.CharField(max_length=30)
     is_used = django.db.models.BooleanField(default=False)

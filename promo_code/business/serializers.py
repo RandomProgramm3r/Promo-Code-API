@@ -1,3 +1,5 @@
+import uuid
+
 import django.contrib.auth.password_validation
 import django.core.exceptions
 import django.core.validators
@@ -15,6 +17,7 @@ import business.validators
 
 
 class CompanySignUpSerializer(rest_framework.serializers.ModelSerializer):
+    id = rest_framework.serializers.UUIDField(read_only=True)
     password = rest_framework.serializers.CharField(
         write_only=True,
         required=True,
@@ -43,6 +46,7 @@ class CompanySignUpSerializer(rest_framework.serializers.ModelSerializer):
     class Meta:
         model = business_models.Company
         fields = (
+            'id',
             'name',
             'email',
             'password',
@@ -119,7 +123,9 @@ class CompanyTokenRefreshSerializer(
             )
 
         try:
-            company = business_models.Company.objects.get(id=company_id)
+            company = business_models.Company.objects.get(
+                id=uuid.UUID(company_id),
+            )
         except business_models.Company.DoesNotExist:
             raise rest_framework_simplejwt.exceptions.InvalidToken(
                 'Company not found',
@@ -131,7 +137,15 @@ class CompanyTokenRefreshSerializer(
                 'Token is blacklisted',
             )
 
-        return super().validate(attrs)
+        new_refresh = rest_framework_simplejwt.tokens.RefreshToken()
+        new_refresh['user_type'] = 'company'
+        new_refresh['company_id'] = str(company.id)
+        new_refresh['token_version'] = company.token_version
+
+        return {
+            'access': str(new_refresh.access_token),
+            'refresh': str(new_refresh),
+        }
 
 
 class TargetSerializer(rest_framework.serializers.Serializer):
