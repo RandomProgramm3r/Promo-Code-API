@@ -26,4 +26,9 @@ urlpatterns = [
         business.views.PromoCreateView.as_view(),
         name='promo-create',
     ),
+    django.urls.path(
+        'promo/list',
+        business.views.CompanyPromoListView.as_view(),
+        name='company-promo-list',
+    ),
 ]

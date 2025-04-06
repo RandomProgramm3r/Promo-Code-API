@@ -3,6 +3,7 @@ import uuid
 import django.contrib.auth.password_validation
 import django.core.exceptions
 import django.core.validators
+import django.utils.timezone
 import pycountry
 import rest_framework.exceptions
 import rest_framework.serializers
@@ -359,5 +360,89 @@ class PromoCreateSerializer(rest_framework.serializers.ModelSerializer):
             data.pop('promo_common', None)
         else:
             data.pop('promo_unique', None)
+
+        return data
+
+
+class PromoReadOnlySerializer(rest_framework.serializers.ModelSerializer):
+    promo_id = rest_framework.serializers.UUIDField(
+        source='id',
+        read_only=True,
+    )
+    company_id = rest_framework.serializers.UUIDField(
+        source='company.id',
+        read_only=True,
+    )
+    company_name = rest_framework.serializers.CharField(
+        source='company.name',
+        read_only=True,
+    )
+    target = TargetSerializer()
+    promo_unique = rest_framework.serializers.SerializerMethodField()
+    like_count = rest_framework.serializers.SerializerMethodField()
+    used_count = rest_framework.serializers.SerializerMethodField()
+    active = rest_framework.serializers.SerializerMethodField()
+
+    class Meta:
+        model = business_models.Promo
+        fields = (
+            'promo_id',
+            'company_id',
+            'company_name',
+            'description',
+            'image_url',
+            'target',
+            'max_count',
+            'active_from',
+            'active_until',
+            'mode',
+            'promo_common',
+            'promo_unique',
+            'like_count',
+            'used_count',
+            'active',
+        )
+
+    def get_promo_unique(self, obj):
+        if obj.mode == business_models.Promo.MODE_UNIQUE:
+            return [code.code for code in obj.unique_codes.all()]
+
+        return None
+
+    def get_like_count(self, obj):
+        return 0
+
+    def get_used_count(self, obj):
+        if obj.mode == business_models.Promo.MODE_UNIQUE:
+            return obj.unique_codes.filter(is_used=True).count()
+
+        return 0
+
+    def get_active(self, obj):
+        now = django.utils.timezone.now().date()
+        active_from = obj.active_from
+        active_until = obj.active_until
+
+        date_active = True
+
+        if active_from and active_from > now:
+            date_active = False
+
+        if active_until and active_until < now:
+            date_active = False
+
+        else:
+            max_count_condition = obj.unique_codes.filter(
+                is_used=False,
+            ).exists()
+
+        return date_active and max_count_condition
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        if instance.mode == business_models.Promo.MODE_COMMON:
+            data.pop('promo_unique', None)
+        else:
+            data.pop('promo_common', None)
 
         return data
