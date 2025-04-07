@@ -23,6 +23,8 @@ class CompanySignUpView(
     core.views.BaseCustomResponseMixin,
     rest_framework.generics.CreateAPIView,
 ):
+    serializer_class = business.serializers.CompanySignUpSerializer
+
     def post(self, request):
         try:
             serializer = business.serializers.CompanySignUpSerializer(
@@ -65,6 +67,8 @@ class CompanySignInView(
     core.views.BaseCustomResponseMixin,
     rest_framework_simplejwt.views.TokenObtainPairView,
 ):
+    serializer_class = business.serializers.CompanySignInSerializer
+
     def post(self, request):
         try:
             serializer = business.serializers.CompanySignInSerializer(
@@ -171,38 +175,6 @@ class CompanyPromoListView(rest_framework.generics.ListAPIView):
 
         return queryset  # noqa: R504
 
-    def validate_query_params(self):
-        errors = {}
-        countries = self.request.query_params.getlist('country', [])
-        country_list = []
-
-        for country_group in countries:
-            country_list.extend(country_group.split(','))
-
-        country_list = [c.strip().upper() for c in country_list if c.strip()]
-        invalid_countries = []
-
-        for code in country_list:
-            try:
-                pycountry.countries.lookup(code)
-            except LookupError:
-                invalid_countries.append(code)
-
-        if invalid_countries:
-            errors['country'] = (
-                f'Invalid country codes: {", ".join(invalid_countries)}'
-            )
-
-        sort_by = self.request.query_params.get('sort_by')
-        if sort_by and sort_by not in ['active_from', 'active_until']:
-            errors['sort_by'] = (
-                'Invalid sort_by parameter. '
-                'Available values: active_from, active_until'
-            )
-
-        if errors:
-            raise rest_framework.exceptions.ValidationError(errors)
-
     def list(self, request, *args, **kwargs):
         try:
             self.validate_query_params()
@@ -213,3 +185,86 @@ class CompanyPromoListView(rest_framework.generics.ListAPIView):
             )
 
         return super().list(request, *args, **kwargs)
+
+    def validate_query_params(self):
+        self._validate_allowed_params()
+        errors = {}
+        self._validate_countries(errors)
+        self._validate_sort_by(errors)
+        self._validate_offset()
+        self._validate_limit()
+        if errors:
+            raise rest_framework.exceptions.ValidationError(errors)
+
+    def _validate_allowed_params(self):
+        allowed_params = {'country', 'limit', 'offset', 'sort_by'}
+        unexpected_params = (
+            set(self.request.query_params.keys()) - allowed_params
+        )
+
+        if unexpected_params:
+            raise rest_framework.exceptions.ValidationError('Invalid params.')
+
+    def _validate_countries(self, errors):
+        countries = self.request.query_params.getlist('country', [])
+        country_list = []
+
+        for country_group in countries:
+            country_list.extend(country_group.split(','))
+
+        country_list = [c.strip().upper() for c in country_list if c.strip()]
+        invalid_countries = []
+
+        for code in country_list:
+            if len(code) != 2:
+                invalid_countries.append(code)
+                continue
+
+            try:
+                pycountry.countries.lookup(code)
+            except LookupError:
+                invalid_countries.append(code)
+
+        if invalid_countries:
+            errors['country'] = (
+                f'Invalid country codes: {", ".join(invalid_countries)}'
+            )
+
+    def _validate_sort_by(self, errors):
+        sort_by = self.request.query_params.get('sort_by')
+        if sort_by and sort_by not in ['active_from', 'active_until']:
+            errors['sort_by'] = (
+                'Invalid sort_by parameter. '
+                'Available values: active_from, active_until'
+            )
+
+    def _validate_offset(self):
+        offset = self.request.query_params.get('offset')
+        if offset is not None:
+            try:
+                offset = int(offset)
+            except (TypeError, ValueError):
+                raise rest_framework.exceptions.ValidationError(
+                    'Invalid offset format.',
+                )
+
+            if offset < 0:
+                raise rest_framework.exceptions.ValidationError(
+                    'Offset cannot be negative.',
+                )
+
+    def _validate_limit(self):
+        limit = self.request.query_params.get('limit')
+
+        if limit is not None:
+            try:
+                limit = int(limit)
+            except (TypeError, ValueError):
+                raise rest_framework.exceptions.ValidationError(
+                    'Invalid limit format.',
+                )
+
+            if limit < 0:
+                raise rest_framework.exceptions.ValidationError(
+                    'Limit cannot be negative.',
+                )

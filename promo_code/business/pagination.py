@@ -12,22 +12,15 @@ class CustomLimitOffsetPagination(
     def get_limit(self, request):
         param_limit = request.query_params.get(self.limit_query_param)
         if param_limit is not None:
-            try:
-                limit = int(param_limit)
-                if limit < 0:
-                    raise rest_framework.exceptions.ValidationError(
-                        'Limit cannot be negative.',
-                    )
+            limit = int(param_limit)
 
-                if limit == 0:
-                    return 0
+            if limit == 0:
+                return 0
 
-                if self.max_limit:
-                    return min(limit, self.max_limit)
+            if self.max_limit:
+                return min(limit, self.max_limit)
 
-                return limit
-            except (TypeError, ValueError):
-                pass
+            return limit
 
         return self.default_limit
 
