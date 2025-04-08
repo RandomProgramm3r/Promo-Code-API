@@ -152,16 +152,15 @@ class CompanyPromoListView(rest_framework.generics.ListAPIView):
             company=self.request.user,
         )
 
-        countries = self.request.query_params.getlist('country', [])
-        country_list = []
+        countries = [
+            country.strip()
+            for group in self.request.query_params.getlist('country', [])
+            for country in group.split(',')
+            if country.strip()
+        ]
 
-        for country_group in countries:
-            country_list.extend(country_group.split(','))
-
-        country_list = [c.strip() for c in country_list if c.strip()]
-
-        if country_list:
-            regex_pattern = r'(' + '|'.join(map(re.escape, country_list)) + ')'
+        if countries:
+            regex_pattern = r'(' + '|'.join(map(re.escape, countries)) + ')'
             queryset = queryset.filter(
                 django.db.models.Q(target__country__iregex=regex_pattern)
                 | django.db.models.Q(target__country__isnull=True),
@@ -210,9 +209,17 @@ class CompanyPromoListView(rest_framework.generics.ListAPIView):
         country_list = []
 
         for country_group in countries:
-            country_list.extend(country_group.split(','))
+            parts = [part.strip() for part in country_group.split(',')]
+
+            if any(part == '' for part in parts):
+                raise rest_framework.exceptions.ValidationError(
+                    'Invalid country format.',
+                )
+
+            country_list.extend(parts)
 
         country_list = [c.strip().upper() for c in country_list if c.strip()]
+
         invalid_countries = []
 
         for code in country_list:
