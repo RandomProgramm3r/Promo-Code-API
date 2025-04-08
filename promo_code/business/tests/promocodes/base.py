@@ -23,9 +23,11 @@ class BasePromoCreateTestCase(rest_framework.test.APITestCase):
             'password': 'SecurePass123!',
         }
         business.models.Company.objects.create_company(
-            name=cls.valid_data['name'],
+            **cls.valid_data,
+        )
+
+        cls.company = business.models.Company.objects.get(
             email=cls.valid_data['email'],
-            password=cls.valid_data['password'],
         )
 
         response = cls.client.post(
