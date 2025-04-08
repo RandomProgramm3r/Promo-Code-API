@@ -7,7 +7,13 @@ import business.tests.promocodes.base
 class TestPromoCodeCreation(
     business.tests.promocodes.base.BasePromoCreateTestCase,
 ):
+
+    def setUp(self):
+        super().setUp()
+        self.client.credentials(HTTP_AUTHORIZATION='Bearer ' + self.token)
+
     def test_create_promo_with_old_token(self):
+        self.client.credentials()
         registration_data = {
             'name': 'Someone',
             'email': 'mail@mail.com',
@@ -92,7 +98,6 @@ class TestPromoCodeCreation(
             self.promo_create_url,
             payload,
             format='json',
-            HTTP_AUTHORIZATION='Bearer ' + self.token,
         )
         self.assertEqual(
             response.status_code,
@@ -113,7 +118,6 @@ class TestPromoCodeCreation(
             self.promo_create_url,
             payload,
             format='json',
-            HTTP_AUTHORIZATION='Bearer ' + self.token,
         )
         self.assertEqual(
             response.status_code,
@@ -134,7 +138,6 @@ class TestPromoCodeCreation(
             self.promo_create_url,
             payload,
             format='json',
-            HTTP_AUTHORIZATION='Bearer ' + self.token,
         )
         self.assertEqual(
             response.status_code,
@@ -154,7 +157,6 @@ class TestPromoCodeCreation(
             self.promo_create_url,
             payload,
             format='json',
-            HTTP_AUTHORIZATION='Bearer ' + self.token,
         )
         self.assertEqual(
             response.status_code,
@@ -179,7 +181,6 @@ class TestPromoCodeCreation(
             self.promo_create_url,
             payload,
             format='json',
-            HTTP_AUTHORIZATION='Bearer ' + self.token,
         )
         self.assertEqual(
             response.status_code,
@@ -199,7 +200,6 @@ class TestPromoCodeCreation(
             self.promo_create_url,
             payload,
             format='json',
-            HTTP_AUTHORIZATION='Bearer ' + self.token,
         )
         self.assertEqual(
             response.status_code,
@@ -222,7 +222,6 @@ class TestPromoCodeCreation(
             self.promo_create_url,
             payload,
             format='json',
-            HTTP_AUTHORIZATION='Bearer ' + self.token,
         )
         self.assertEqual(
             response.status_code,
@@ -242,7 +241,6 @@ class TestPromoCodeCreation(
             self.promo_create_url,
             payload,
             format='json',
-            HTTP_AUTHORIZATION='Bearer ' + self.token,
         )
         self.assertEqual(
             response.status_code,
@@ -262,7 +260,6 @@ class TestPromoCodeCreation(
             self.promo_create_url,
             payload,
             format='json',
-            HTTP_AUTHORIZATION='Bearer ' + self.token,
         )
         self.assertEqual(
             response.status_code,
@@ -283,7 +280,6 @@ class TestPromoCodeCreation(
             self.promo_create_url,
             payload,
             format='json',
-            HTTP_AUTHORIZATION='Bearer ' + self.token,
         )
         self.assertEqual(
             response.status_code,
@@ -303,7 +299,6 @@ class TestPromoCodeCreation(
             self.promo_create_url,
             payload,
             format='json',
-            HTTP_AUTHORIZATION='Bearer ' + self.token,
         )
         self.assertEqual(
             response.status_code,
@@ -358,7 +353,6 @@ class TestPromoCodeCreation(
             self.promo_create_url,
             payload,
             format='json',
-            HTTP_AUTHORIZATION='Bearer ' + self.token,
         )
         self.assertEqual(
             response.status_code,
@@ -384,7 +378,6 @@ class TestPromoCodeCreation(
             self.promo_create_url,
             payload,
             format='json',
-            HTTP_AUTHORIZATION='Bearer ' + self.token,
         )
         self.assertEqual(
             response.status_code,
@@ -413,7 +406,6 @@ class TestPromoCodeCreation(
             self.promo_create_url,
             payload,
             format='json',
-            HTTP_AUTHORIZATION='Bearer ' + self.token,
         )
         self.assertEqual(
             response.status_code,

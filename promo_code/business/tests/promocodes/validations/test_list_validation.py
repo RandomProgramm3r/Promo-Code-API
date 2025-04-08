@@ -4,7 +4,7 @@ import rest_framework.status
 import business.tests.promocodes.base
 
 
-class CompanyPromoFetchTests(
+class TestPromoCodeList(
     business.tests.promocodes.base.BasePromoCreateTestCase,
 ):
 
@@ -20,6 +20,10 @@ class CompanyPromoFetchTests(
             ),
             ('invalid_country_format_single', {'country': 'france'}),
             ('invalid_country_format_multiple', {'country': 'gb,us,france'}),
+            ('invalid_country_does_not_exist', {'country': 'xx'}),
+            ('invalid_country_too_short', {'country': 'F'}),
+            ('invalid_country_format', {'country': 10}),
+            ('invalid_country_empty_string', {'country': ''}),
             ('unexpected_parameter', {'unexpected': 'value'}),
             (
                 'combined_invalid_parameters',

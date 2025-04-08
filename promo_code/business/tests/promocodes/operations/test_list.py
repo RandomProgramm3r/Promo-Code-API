@@ -1,3 +1,4 @@
+import parameterized
 import rest_framework.status
 import rest_framework.test
 
@@ -30,26 +31,6 @@ class TestPromoEndpoint(
     @classmethod
     def setUpTestData(cls):
         business.tests.promocodes.base.BasePromoCreateTestCase.setUpTestData()
-
-        cls.valid_data = {
-            'name': 'New Digital Marketing Solutions Inc.',
-            'email': 'newtestcompany@example.com',
-            'password': 'SecurePass123!',
-        }
-
-        cls.company = business.models.Company.objects.create_company(
-            **cls.valid_data,
-        )
-
-        response = cls.client.post(
-            cls.signin_url,
-            {
-                'email': cls.valid_data['email'],
-                'password': cls.valid_data['password'],
-            },
-            format='json',
-        )
-        cls.new_token = response.data['access']
 
         cls.promo1_data = {
             'description': 'Increased cashback 10% for new bank customers!',
@@ -113,7 +94,7 @@ class TestPromoEndpoint(
 
     def setUp(self):
         self.client = rest_framework.test.APIClient()
-        self.client.credentials(HTTP_AUTHORIZATION='Bearer ' + self.new_token)
+        self.client.credentials(HTTP_AUTHORIZATION='Bearer ' + self.token)
 
     def test_get_promos_without_token(self):
         client = rest_framework.test.APIClient()
@@ -311,3 +292,29 @@ class TestPromoEndpoint(
 
         self.assertEqual(len(data), 2)
         self.assertEqual(response.get('X-Total-Count'), '2')
+
+    @parameterized.parameterized.expand(
+        [
+            ('comma_separated', {'country': 'gb,FR'}, 3),
+            ('multiple_params', {'country': ['gb', 'FR']}, 3),
+        ],
+    )
+    def test_country_parameter_formats(self, _, params, expected_count):
+        full_params = {
+            **params,
+            'sort_by': 'active_from',
+            'limit': 10,
+        }
+
+        response = self.client.get(self.promo_list_url, full_params)
+        self.assertEqual(
+            response.status_code,
+            rest_framework.status.HTTP_200_OK,
+        )
+        data = response.data
+
+        self.assertEqual(len(data), expected_count)
+        self.assertEqual(data[0]['promo_id'], str(self.created_promos[1].id))
+        self.assertEqual(data[1]['promo_id'], str(self.created_promos[0].id))
+        self.assertEqual(data[2]['promo_id'], str(self.created_promos[2].id))
+        self.assertEqual(response['X-Total-Count'], str(expected_count))
