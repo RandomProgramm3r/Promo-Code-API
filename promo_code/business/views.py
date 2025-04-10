@@ -1,6 +1,7 @@
 import re
 
 import django.db.models
+import django.shortcuts
 import pycountry
 import rest_framework.exceptions
 import rest_framework.generics
@@ -8,6 +9,7 @@ import rest_framework.permissions
 import rest_framework.response
 import rest_framework.serializers
 import rest_framework.status
+import rest_framework.views
 import rest_framework_simplejwt.exceptions
 import rest_framework_simplejwt.tokens
 import rest_framework_simplejwt.views
@@ -275,3 +277,42 @@ class CompanyPromoListView(rest_framework.generics.ListAPIView):
                 raise rest_framework.exceptions.ValidationError(
                     'Limit cannot be negative.',
                 )
+
+
+class CompanyPromoDetailView(rest_framework.views.APIView):
+    permission_classes = [
+        rest_framework.permissions.IsAuthenticated,
+        business.permissions.IsCompanyUser,
+    ]
+
+    lookup_field = 'id'
+
+    def get(self, request, id):
+        try:
+            promo = business.models.Promo.objects.get(
+                id=id,
+            )
+        except business.models.Promo.DoesNotExist:
+            raise rest_framework.exceptions.NotFound(
+                'Promo not found,',
+            )
+
+        if promo.company != request.user:
+            return rest_framework.response.Response(
+                {
+                    'status': 'error',
+                    'message': (
+                        'The promo code does not belong to this company.'
+                    ),
+                },
+                status=rest_framework.status.HTTP_403_FORBIDDEN,
+            )
+
+        serializer = business.serializers.PromoCreateSerializer(
+            promo,
+        )
+
+        return rest_framework.response.Response(
+            serializer.data,
+            status=rest_framework.status.HTTP_200_OK,
+        )
