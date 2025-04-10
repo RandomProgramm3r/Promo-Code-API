@@ -31,4 +31,9 @@ urlpatterns = [
         business.views.CompanyPromoListView.as_view(),
         name='company-promo-list',
     ),
+    django.urls.path(
+        'promo/<uuid:id>',
+        business.views.CompanyPromoDetailView.as_view(),
+        name='promo-detail',
+    ),
 ]
