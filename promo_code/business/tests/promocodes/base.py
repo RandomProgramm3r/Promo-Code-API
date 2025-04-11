@@ -1,12 +1,11 @@
 import django.urls
 import rest_framework
-import rest_framework.status
 import rest_framework.test
 
 import business.models
 
 
-class BasePromoCreateTestCase(rest_framework.test.APITestCase):
+class BasePromoTestCase(rest_framework.test.APITestCase):
     @classmethod
     def setUpTestData(cls):
         super().setUpTestData()
@@ -17,28 +16,46 @@ class BasePromoCreateTestCase(rest_framework.test.APITestCase):
         )
         cls.signup_url = django.urls.reverse('api-business:company-sign-up')
         cls.signin_url = django.urls.reverse('api-business:company-sign-in')
-        cls.valid_data = {
+
+        cls.company1_data = {
             'name': 'Digital Marketing Solutions Inc.',
-            'email': 'testcompany@example.com',
+            'email': 'company1@example.com',
             'password': 'SecurePass123!',
         }
-        business.models.Company.objects.create_company(
-            **cls.valid_data,
+        business.models.Company.objects.create_company(**cls.company1_data)
+        cls.company1 = business.models.Company.objects.get(
+            email=cls.company1_data['email'],
         )
 
-        cls.company = business.models.Company.objects.get(
-            email=cls.valid_data['email'],
+        cls.company2_data = {
+            'name': 'Global Retail Hub LLC',
+            'email': 'company2@example.com',
+            'password': 'SecurePass456!',
+        }
+        business.models.Company.objects.create_company(**cls.company2_data)
+        cls.company2 = business.models.Company.objects.get(
+            email=cls.company2_data['email'],
         )
 
-        response = cls.client.post(
+        response1 = cls.client.post(
             cls.signin_url,
             {
-                'email': cls.valid_data['email'],
-                'password': cls.valid_data['password'],
+                'email': cls.company1_data['email'],
+                'password': cls.company1_data['password'],
             },
             format='json',
         )
-        cls.token = response.data['access']
+        cls.company1_token = response1.data['access']
+
+        response2 = cls.client.post(
+            cls.signin_url,
+            {
+                'email': cls.company2_data['email'],
+                'password': cls.company2_data['password'],
+            },
+            format='json',
+        )
+        cls.company2_token = response2.data['access']
 
     def tearDown(self):
         business.models.Company.objects.all().delete()

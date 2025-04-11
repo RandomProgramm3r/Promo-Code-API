@@ -1,11 +1,18 @@
 import rest_framework.status
+import rest_framework.test
 
 import business.tests.promocodes.base
 
 
 class TestSuccessfulPromoCreation(
-    business.tests.promocodes.base.BasePromoCreateTestCase,
+    business.tests.promocodes.base.BasePromoTestCase,
 ):
+    def setUp(self):
+        self.client = rest_framework.test.APIClient()
+        self.client.credentials(
+            HTTP_AUTHORIZATION='Bearer ' + self.company1_token,
+        )
+
     def test_successful_promo_creation_1(self):
         payload = {
             'description': 'Increased cashback 10% for new bank clients!',
@@ -20,7 +27,6 @@ class TestSuccessfulPromoCreation(
             self.promo_create_url,
             payload,
             format='json',
-            HTTP_AUTHORIZATION='Bearer ' + self.token,
         )
         self.assertEqual(
             response.status_code,
@@ -41,7 +47,6 @@ class TestSuccessfulPromoCreation(
             self.promo_create_url,
             payload,
             format='json',
-            HTTP_AUTHORIZATION='Bearer ' + self.token,
         )
         self.assertEqual(
             response.status_code,
@@ -62,7 +67,6 @@ class TestSuccessfulPromoCreation(
             self.promo_create_url,
             payload,
             format='json',
-            HTTP_AUTHORIZATION='Bearer ' + self.token,
         )
         self.assertEqual(
             response.status_code,
@@ -82,7 +86,6 @@ class TestSuccessfulPromoCreation(
             self.promo_create_url,
             payload,
             format='json',
-            HTTP_AUTHORIZATION='Bearer ' + self.token,
         )
         self.assertEqual(
             response.status_code,
@@ -103,7 +106,6 @@ class TestSuccessfulPromoCreation(
             self.promo_create_url,
             payload,
             format='json',
-            HTTP_AUTHORIZATION='Bearer ' + self.token,
         )
         self.assertEqual(
             response.status_code,
@@ -123,7 +125,6 @@ class TestSuccessfulPromoCreation(
             self.promo_create_url,
             payload,
             format='json',
-            HTTP_AUTHORIZATION='Bearer ' + self.token,
         )
         self.assertEqual(
             response.status_code,
@@ -143,7 +144,6 @@ class TestSuccessfulPromoCreation(
             self.promo_create_url,
             payload,
             format='json',
-            HTTP_AUTHORIZATION='Bearer ' + self.token,
         )
         self.assertEqual(
             response.status_code,
@@ -163,7 +163,6 @@ class TestSuccessfulPromoCreation(
             self.promo_create_url,
             payload,
             format='json',
-            HTTP_AUTHORIZATION='Bearer ' + self.token,
         )
         self.assertEqual(
             response.status_code,

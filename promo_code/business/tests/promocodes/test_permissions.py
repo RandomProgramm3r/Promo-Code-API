@@ -9,7 +9,7 @@ import user.models
 
 
 class TestIsCompanyUserPermission(
-    business.tests.promocodes.base.BasePromoCreateTestCase,
+    business.tests.promocodes.base.BasePromoTestCase,
 ):
     def setUp(self):
         self.factory = rest_framework.test.APIRequestFactory()

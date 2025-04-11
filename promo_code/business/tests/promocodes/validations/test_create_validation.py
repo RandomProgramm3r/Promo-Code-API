@@ -5,12 +5,14 @@ import business.tests.promocodes.base
 
 
 class TestPromoCodeCreation(
-    business.tests.promocodes.base.BasePromoCreateTestCase,
+    business.tests.promocodes.base.BasePromoTestCase,
 ):
 
     def setUp(self):
         super().setUp()
-        self.client.credentials(HTTP_AUTHORIZATION='Bearer ' + self.token)
+        self.client.credentials(
+            HTTP_AUTHORIZATION='Bearer ' + self.company1_token,
+        )
 
     def test_create_promo_with_old_token(self):
         self.client.credentials()
