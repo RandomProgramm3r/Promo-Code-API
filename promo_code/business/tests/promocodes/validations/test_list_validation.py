@@ -1,16 +1,27 @@
 import parameterized
 import rest_framework.status
+import rest_framework.test
 
 import business.tests.promocodes.base
 
 
 class TestPromoCodeList(
-    business.tests.promocodes.base.BasePromoCreateTestCase,
+    business.tests.promocodes.base.BasePromoTestCase,
 ):
-
     def setUp(self):
         super().setUp()
-        self.client.credentials(HTTP_AUTHORIZATION='Bearer ' + self.token)
+        self.client.credentials(
+            HTTP_AUTHORIZATION='Bearer ' + self.company1_token,
+        )
+
+    def test_get_promos_without_token(self):
+        self.client.credentials()
+        client = rest_framework.test.APIClient()
+        response = client.get(self.promo_list_url)
+        self.assertEqual(
+            response.status_code,
+            rest_framework.status.HTTP_401_UNAUTHORIZED,
+        )
 
     @parameterized.parameterized.expand(
         [

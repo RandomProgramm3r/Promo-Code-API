@@ -7,7 +7,7 @@ import business.tests.promocodes.base
 
 
 class TestPromoEndpoint(
-    business.tests.promocodes.base.BasePromoCreateTestCase,
+    business.tests.promocodes.base.BasePromoTestCase,
 ):
     def _create_additional_promo(self):
         self.__class__.promo5_data = {
@@ -71,7 +71,7 @@ class TestPromoEndpoint(
 
         for promo_data in [cls.promo1_data, cls.promo2_data, cls.promo3_data]:
             promo = business.models.Promo.objects.create(
-                company=cls.company,
+                company=cls.company1,
                 description=promo_data['description'],
                 image_url=promo_data.get('image_url'),
                 target=promo_data['target'],
@@ -94,14 +94,8 @@ class TestPromoEndpoint(
 
     def setUp(self):
         self.client = rest_framework.test.APIClient()
-        self.client.credentials(HTTP_AUTHORIZATION='Bearer ' + self.token)
-
-    def test_get_promos_without_token(self):
-        client = rest_framework.test.APIClient()
-        response = client.get(self.promo_list_url)
-        self.assertEqual(
-            response.status_code,
-            rest_framework.status.HTTP_401_UNAUTHORIZED,
+        self.client.credentials(
+            HTTP_AUTHORIZATION='Bearer ' + self.company1_token,
         )
 
     def test_get_all_promos(self):
