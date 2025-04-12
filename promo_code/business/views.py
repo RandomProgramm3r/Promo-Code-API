@@ -308,9 +308,57 @@ class CompanyPromoDetailView(rest_framework.views.APIView):
                 status=rest_framework.status.HTTP_403_FORBIDDEN,
             )
 
-        serializer = business.serializers.PromoCreateSerializer(
+        serializer = business.serializers.PromoDetailSerializer(
             promo,
         )
+
+        return rest_framework.response.Response(
+            serializer.data,
+            status=rest_framework.status.HTTP_200_OK,
+        )
+
+    def patch(self, request, id, *args, **kwargs):
+        try:
+            promo = business.models.Promo.objects.get(
+                id=id,
+            )
+        except business.models.Promo.DoesNotExist:
+            return rest_framework.response.Response(
+                {
+                    'status': 'error',
+                    'message': 'Promo code not found.',
+                },
+                status=rest_framework.status.HTTP_404_NOT_FOUND,
+            )
+
+        if promo.company != request.user:
+            return rest_framework.response.Response(
+                {
+                    'status': 'error',
+                    'message': ('Promo code does not belong to this company.'),
+                },
+                status=rest_framework.status.HTTP_403_FORBIDDEN,
+            )
+
+        serializer = business.serializers.PromoDetailSerializer(
+            promo,
+            data=request.data,
+            partial=True,
+            context={
+                'request': request,
+            },
+        )
+
+        if not serializer.is_valid():
+            return rest_framework.response.Response(
+                {
+                    'status': 'error',
+                    'message': 'Request data error.',
+                },
+                status=rest_framework.status.HTTP_400_BAD_REQUEST,
+            )
+
+        serializer.save()
 
         return rest_framework.response.Response(
             serializer.data,
