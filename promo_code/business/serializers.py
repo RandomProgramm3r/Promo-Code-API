@@ -154,20 +154,16 @@ class TargetSerializer(rest_framework.serializers.Serializer):
         min_value=0,
         max_value=100,
         required=False,
-        allow_null=True,
     )
     age_until = rest_framework.serializers.IntegerField(
         min_value=0,
         max_value=100,
         required=False,
-        allow_null=True,
     )
     country = rest_framework.serializers.CharField(
         max_length=2,
         min_length=2,
         required=False,
-        allow_null=True,
-        allow_blank=True,
     )
     categories = rest_framework.serializers.ListField(
         child=rest_framework.serializers.CharField(
@@ -193,9 +189,8 @@ class TargetSerializer(rest_framework.serializers.Serializer):
 
         country = data.get('country')
         if country:
-            country = country.strip().upper()
             try:
-                pycountry.countries.lookup(country)
+                pycountry.countries.lookup(country.strip().upper())
                 data['country'] = country
             except LookupError:
                 raise rest_framework.serializers.ValidationError(
@@ -218,7 +213,7 @@ class PromoCreateSerializer(rest_framework.serializers.ModelSerializer):
             django.core.validators.URLValidator(schemes=['http', 'https']),
         ],
     )
-    target = TargetSerializer(required=True)
+    target = TargetSerializer(required=True, allow_null=True)
     promo_common = rest_framework.serializers.CharField(
         min_length=5,
         max_length=30,
@@ -446,3 +441,141 @@ class PromoReadOnlySerializer(rest_framework.serializers.ModelSerializer):
             data.pop('promo_common', None)
 
         return data
+
+
+class PromoDetailSerializer(rest_framework.serializers.ModelSerializer):
+    promo_id = rest_framework.serializers.UUIDField(
+        source='id',
+        read_only=True,
+    )
+    target = TargetSerializer(allow_null=True, required=False)
+    promo_unique = rest_framework.serializers.SerializerMethodField()
+    company_name = rest_framework.serializers.CharField(
+        source='company.name',
+        read_only=True,
+    )
+    like_count = rest_framework.serializers.SerializerMethodField()
+    used_count = rest_framework.serializers.SerializerMethodField()
+
+    class Meta:
+        model = business_models.Promo
+        fields = (
+            'promo_id',
+            'description',
+            'image_url',
+            'target',
+            'max_count',
+            'active_from',
+            'active_until',
+            'mode',
+            'promo_common',
+            'promo_unique',
+            'company_name',
+            'like_count',
+            'used_count',
+        )
+
+    def get_promo_unique(self, obj):
+        if obj.mode == business_models.Promo.MODE_UNIQUE:
+            return [code.code for code in obj.unique_codes.all()]
+
+        return None
+
+    def update(self, instance, validated_data):
+        target_data = validated_data.pop('target', None)
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+
+        if target_data is not None:
+            instance.target = target_data
+
+        instance.save()
+        return instance
+
+    def validate(self, data):
+        instance = self.instance
+        full_data = {
+            'mode': instance.mode,
+            'promo_common': instance.promo_common,
+            'promo_unique': None,
+            'max_count': instance.max_count,
+            'active_from': instance.active_from,
+            'active_until': instance.active_until,
+            'target': instance.target if instance.target is not None else {},
+        }
+        full_data.update(data)
+        mode = full_data.get('mode')
+        promo_common = full_data.get('promo_common')
+        promo_unique = full_data.get('promo_unique')
+        max_count = full_data.get('max_count')
+
+        if mode == business_models.Promo.MODE_COMMON:
+            if not promo_common:
+                raise rest_framework.serializers.ValidationError(
+                    {
+                        'promo_common': (
+                            'This field is required for COMMON mode.'
+                        ),
+                    },
+                )
+
+            if promo_unique is not None:
+                raise rest_framework.serializers.ValidationError(
+                    {
+                        'promo_unique': (
+                            'This field is not allowed for COMMON mode.'
+                        ),
+                    },
+                )
+
+            if max_count < 0 or max_count > 100000000:
+                raise rest_framework.serializers.ValidationError(
+                    {'max_count': 'Must be between 0 and 100,000,000.'},
+                )
+
+        elif mode == business_models.Promo.MODE_UNIQUE:
+            if not promo_unique:
+                raise rest_framework.serializers.ValidationError(
+                    {
+                        'promo_unique': (
+                            'This field is required for UNIQUE mode.'
+                        ),
+                    },
+                )
+
+            if promo_common is not None:
+                raise rest_framework.serializers.ValidationError(
+                    {
+                        'promo_common': (
+                            'This field is not allowed for UNIQUE mode.'
+                        ),
+                    },
+                )
+
+            if max_count != 1:
+                raise rest_framework.serializers.ValidationError(
+                    {'max_count': 'Must be 1 for UNIQUE mode.'},
+                )
+        else:
+            raise rest_framework.serializers.ValidationError(
+                {'mode': 'Invalid mode.'},
+            )
+
+        active_from = full_data.get('active_from')
+        active_until = full_data.get('active_until')
+
+        if active_from and active_until and active_from > active_until:
+            raise rest_framework.serializers.ValidationError(
+                {'active_until': 'Must be after or equal to active_from.'},
+            )
+
+        return data
+
+    def get_like_count(self, obj):
+        return 0
+
+    def get_used_count(self, obj):
+        if obj.mode == business_models.Promo.MODE_UNIQUE:
+            return obj.unique_codes.filter(is_used=True).count()
+
+        return 0
