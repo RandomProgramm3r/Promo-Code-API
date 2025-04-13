@@ -4,7 +4,7 @@ import rest_framework.test
 import business.tests.promocodes.base
 
 
-class TestSuccessfulPromoCreation(
+class TestPromoCreate(
     business.tests.promocodes.base.BasePromoTestCase,
 ):
     def setUp(self):

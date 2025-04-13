@@ -6,7 +6,7 @@ import business.models
 import business.tests.promocodes.base
 
 
-class TestPromoEndpoint(
+class TestPromoList(
     business.tests.promocodes.base.BasePromoTestCase,
 ):
     def _create_additional_promo(self):
@@ -30,7 +30,7 @@ class TestPromoEndpoint(
 
     @classmethod
     def setUpTestData(cls):
-        business.tests.promocodes.base.BasePromoCreateTestCase.setUpTestData()
+        business.tests.promocodes.base.BasePromoTestCase.setUpTestData()
 
         cls.promo1_data = {
             'description': 'Increased cashback 10% for new bank customers!',
