@@ -5,7 +5,7 @@ import rest_framework.test
 import business.tests.promocodes.base
 
 
-class TestPromoCodeList(
+class TestPromoList(
     business.tests.promocodes.base.BasePromoTestCase,
 ):
     def setUp(self):

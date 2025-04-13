@@ -4,7 +4,7 @@ import rest_framework.status
 import business.tests.promocodes.base
 
 
-class TestPromoCodeCreation(
+class TestPromoCreate(
     business.tests.promocodes.base.BasePromoTestCase,
 ):
 

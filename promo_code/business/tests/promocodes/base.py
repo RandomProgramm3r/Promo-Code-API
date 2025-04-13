@@ -1,5 +1,6 @@
 import django.urls
 import rest_framework
+import rest_framework.status
 import rest_framework.test
 
 import business.models
@@ -56,6 +57,13 @@ class BasePromoTestCase(rest_framework.test.APITestCase):
             format='json',
         )
         cls.company2_token = response2.data['access']
+
+    @classmethod
+    def promo_detail_url(cls, promo_id):
+        return django.urls.reverse(
+            'api-business:promo-detail',
+            kwargs={'id': promo_id},
+        )
 
     def tearDown(self):
         business.models.Company.objects.all().delete()
