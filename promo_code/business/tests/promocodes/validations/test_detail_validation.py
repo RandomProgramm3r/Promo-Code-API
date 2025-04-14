@@ -129,17 +129,16 @@ class TestPromoDetail(business.tests.promocodes.base.BasePromoTestCase):
         [
             (
                 'non_string',
-                {'description': 'Bonus 10000%!', 'image_url': False},
+                {'image_url': False},
             ),
             (
                 'incomplete_url',
-                {'description': 'Bonus 10000%!', 'image_url': 'https://'},
+                {'image_url': 'https://'},
             ),
             (
                 'malformed_url',
-                {'description': 'Bonus 10000%!', 'image_url': 'notalink'},
+                {'image_url': 'notalink'},
             ),
-            ('incorrect_type', {'image_url': 'jpeg'}),
         ],
     )
     def test_edit_invalid_image_urls(self, _, patch_payload):
@@ -188,29 +187,63 @@ class TestPromoDetail(business.tests.promocodes.base.BasePromoTestCase):
             rest_framework.status.HTTP_400_BAD_REQUEST,
         )
 
-    def test_edit_invalid_max_count_for_unique(self):
-        promo_id = self.create_promo(self.company2_token, self.unique_payload)
-        self.client.credentials(
-            HTTP_AUTHORIZATION='Bearer ' + self.company2_token,
-        )
-        url = self.promo_detail_url(promo_id)
-        patch_payload = {
-            'max_count': 10,
-        }
-        response = self.client.patch(url, patch_payload, format='json')
-        self.assertEqual(
-            response.status_code,
-            rest_framework.status.HTTP_400_BAD_REQUEST,
-        )
+    @parameterized.parameterized.expand(
+        [
+            (
+                'unique_max_count',
+                'company2_token',
+                'unique_payload',
+                {'max_count': 10},
+            ),
+            (
+                'negative_max_count',
+                'company1_token',
+                'common_payload',
+                {'max_count': -10},
+            ),
+            (
+                'non_integer_max_count',
+                'company1_token',
+                'common_payload',
+                {'max_count': 'invalid'},
+            ),
+            (
+                'zero_max_count',
+                'company2_token',
+                'unique_payload',
+                {'max_count': 0},
+            ),
+            (
+                'max_count_is_none',
+                'company1_token',
+                'common_payload',
+                {'max_count': None},
+            ),
+            (
+                'exceeding_max_count',
+                'company1_token',
+                'common_payload',
+                {'max_count': 100_000_001},
+            ),
+        ],
+    )
+    def test_edit_invalid_max_count(
+        self,
+        _,
+        token_attr,
+        payload_attr,
+        patch_payload,
+    ):
+        token = getattr(self, token_attr)
+        create_payload = getattr(self, payload_attr)
 
-    def test_edit_negative_max_count(self):
-        promo_id = self.create_promo(self.company1_token, self.common_payload)
-        self.client.credentials(
-            HTTP_AUTHORIZATION='Bearer ' + self.company1_token,
-        )
+        promo_id = self.create_promo(token, create_payload)
+
+        self.client.credentials(HTTP_AUTHORIZATION='Bearer ' + token)
         url = self.promo_detail_url(promo_id)
-        patch_payload = {'max_count': -10}
+
         response = self.client.patch(url, patch_payload, format='json')
+
         self.assertEqual(
             response.status_code,
             rest_framework.status.HTTP_400_BAD_REQUEST,
