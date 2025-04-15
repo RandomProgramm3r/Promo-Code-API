@@ -534,15 +534,6 @@ class PromoDetailSerializer(rest_framework.serializers.ModelSerializer):
                 )
 
         elif mode == business_models.Promo.MODE_UNIQUE:
-            if not promo_unique:
-                raise rest_framework.serializers.ValidationError(
-                    {
-                        'promo_unique': (
-                            'This field is required for UNIQUE mode.'
-                        ),
-                    },
-                )
-
             if promo_common is not None:
                 raise rest_framework.serializers.ValidationError(
                     {
