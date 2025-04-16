@@ -226,6 +226,31 @@ class TestPromoDetail(business.tests.promocodes.base.BasePromoTestCase):
         )
         self.assertEqual(response.data.get('max_count'), 4)
 
+    def test_patch_edit_image_url_company2(self):
+        promo_detail_url = self.promo_detail_url(self.__class__.promo2_id)
+        self.client.credentials(
+            HTTP_AUTHORIZATION='Bearer ' + self.company2_token,
+        )
+        response = self.client.get(promo_detail_url)
+        self.assertEqual(
+            response.status_code,
+            rest_framework.status.HTTP_200_OK,
+        )
+        self.assertIsNone(response.data.get('image_url'))
+        data = {
+            'image_url': 'https://cdn2.thecatapi.com/images/3lo.jpg',
+        }
+
+        response = self.client.patch(promo_detail_url, data, format='json')
+        self.assertEqual(
+            response.status_code,
+            rest_framework.status.HTTP_200_OK,
+        )
+        self.assertEqual(
+            response.data.get('image_url'),
+            'https://cdn2.thecatapi.com/images/3lo.jpg',
+        )
+
     def test_final_get_promo_company1(self):
         promo_detail_url = self.promo_detail_url(self.__class__.promo1_id)
         data = {

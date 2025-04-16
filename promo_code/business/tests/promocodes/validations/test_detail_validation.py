@@ -139,6 +139,14 @@ class TestPromoDetail(business.tests.promocodes.base.BasePromoTestCase):
                 'malformed_url',
                 {'image_url': 'notalink'},
             ),
+            (
+                'empty_url',
+                {'image_url': ''},
+            ),
+            (
+                'invalid_url_with_spaces',
+                {'image_url': 'https://example.com/image with spaces.jpg'},
+            ),
         ],
     )
     def test_edit_invalid_image_urls(self, _, patch_payload):
@@ -158,19 +166,41 @@ class TestPromoDetail(business.tests.promocodes.base.BasePromoTestCase):
             (
                 'age_range_invalid',
                 {
-                    'description': 'Bonus 10000%!',
                     'target': {'age_from': 19, 'age_until': 17},
                 },
             ),
+            ('age_from_too_high', {'target': {'age_from': 200}}),
+            ('age_until_too_high', {'target': {'age_until': 200}}),
+            ('age_from_too_low', {'target': {'age_from': -1}}),
+            ('age_until_too_low', {'target': {'age_until': -1}}),
             (
-                'incomplete_target',
-                {'description': 'Bonus 10000%!', 'target': {'country': 'USA'}},
+                'invalid_target_country_format',
+                {'target': {'country': 'USA'}},
+            ),
+            (
+                'invalid_target_country_too_short',
+                {'target': {'country': 'U'}},
+            ),
+            (
+                'invalid_target_country_does_not_exist',
+                {'target': {'country': 'XX'}},
             ),
             (
                 'empty_category',
                 {
-                    'description': 'Bonus 10000%!',
                     'target': {'categories': ['']},
+                },
+            ),
+            (
+                'non_string_category',
+                {
+                    'target': {'categories': [1, 2, 3]},
+                },
+            ),
+            (
+                'non_dict_target',
+                {
+                    'target': ['not', 'a', 'dict'],
                 },
             ),
         ],
@@ -225,6 +255,36 @@ class TestPromoDetail(business.tests.promocodes.base.BasePromoTestCase):
                 'common_payload',
                 {'max_count': 100_000_001},
             ),
+            (
+                'non_integer_max_count_float',
+                'company1_token',
+                'common_payload',
+                {'max_count': 10.5},
+            ),
+            (
+                'max_count_is_empty_string',
+                'company1_token',
+                'common_payload',
+                {'max_count': ''},
+            ),
+            (
+                'max_count_is_list',
+                'company1_token',
+                'common_payload',
+                {'max_count': [1, 2, 3]},
+            ),
+            (
+                'max_count_is_dict',
+                'company1_token',
+                'common_payload',
+                {'max_count': {'key': 'value'}},
+            ),
+            (
+                'max_count_is_boolean',
+                'company1_token',
+                'common_payload',
+                {'max_count': True},
+            ),
         ],
     )
     def test_edit_invalid_max_count(
@@ -268,6 +328,18 @@ class TestPromoDetail(business.tests.promocodes.base.BasePromoTestCase):
             HTTP_AUTHORIZATION='Bearer ' + self.company2_token,
         )
         url = self.promo_detail_url(promo_id)
+        patch_payload = {
+            'active_from': '2024-12-28 12:00:00',
+            'max_count': 100,
+            'description': 'short',
+            'target': {'age_from': 26, 'country': 'fr'},
+        }
+        response = self.client.patch(url, patch_payload, format='json')
+        self.assertEqual(
+            response.status_code,
+            rest_framework.status.HTTP_400_BAD_REQUEST,
+        )
+
         response = self.client.get(url, format='json')
         self.assertEqual(
             response.status_code,
