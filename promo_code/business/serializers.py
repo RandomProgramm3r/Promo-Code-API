@@ -448,6 +448,18 @@ class PromoDetailSerializer(rest_framework.serializers.ModelSerializer):
         source='id',
         read_only=True,
     )
+    description = rest_framework.serializers.CharField(
+        min_length=10,
+        max_length=300,
+        required=True,
+    )
+    image_url = rest_framework.serializers.CharField(
+        required=False,
+        max_length=350,
+        validators=[
+            django.core.validators.URLValidator(schemes=['http', 'https']),
+        ],
+    )
     target = TargetSerializer(allow_null=True, required=False)
     promo_unique = rest_framework.serializers.SerializerMethodField()
     company_name = rest_framework.serializers.CharField(
