@@ -82,7 +82,7 @@ class OtherFieldValidator(rest_framework.serializers.Serializer):
 
         if missing_fields:
             raise rest_framework.serializers.ValidationError(
-                {field: 'This field is required.' for field in missing_fields},
+                dict.fromkeys(missing_fields, 'This field is required.'),
             )
 
         serializer = self.__class__(data=value)
