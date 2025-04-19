@@ -45,7 +45,6 @@ class TestPromoDetail(business.tests.promocodes.base.BasePromoTestCase):
         cls.promo2_id = response2.data['id']
 
     def test_get_promo_company1(self):
-
         promo_detail_url = django.urls.reverse(
             'api-business:promo-detail',
             kwargs={'id': self.__class__.promo1_id},

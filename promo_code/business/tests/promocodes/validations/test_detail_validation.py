@@ -5,7 +5,6 @@ import business.tests.promocodes.base
 
 
 class TestPromoDetail(business.tests.promocodes.base.BasePromoTestCase):
-
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
