@@ -3,21 +3,7 @@ import uuid
 import django.contrib.auth.models
 import django.db.models
 
-
-class CompanyManager(django.contrib.auth.models.BaseUserManager):
-    def create_company(self, email, name, password=None, **extra_fields):
-        if not email:
-            raise ValueError('The Email must be set')
-
-        email = self.normalize_email(email)
-        company = self.model(
-            email=email,
-            name=name,
-            **extra_fields,
-        )
-        company.set_password(password)
-        company.save(using=self._db)
-        return company
+import business.managers
 
 
 class Company(django.contrib.auth.models.AbstractBaseUser):
@@ -37,7 +23,7 @@ class Company(django.contrib.auth.models.AbstractBaseUser):
     created_at = django.db.models.DateTimeField(auto_now_add=True)
     is_active = django.db.models.BooleanField(default=True)
 
-    objects = CompanyManager()
+    objects = business.managers.CompanyManager()
 
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ['name']
@@ -86,6 +72,8 @@ class Promo(django.db.models.Model):
     active = django.db.models.BooleanField(default=True)
 
     created_at = django.db.models.DateTimeField(auto_now_add=True)
+
+    objects = business.managers.PromoManager()
 
     def __str__(self):
         return f'Promo {self.id} ({self.mode})'

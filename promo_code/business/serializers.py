@@ -246,103 +246,22 @@ class PromoCreateSerializer(rest_framework.serializers.ModelSerializer):
         )
 
     def validate(self, data):
-        mode = data.get('mode')
-        promo_common = data.get('promo_common')
-        promo_unique = data.get('promo_unique')
-        max_count = data.get('max_count')
-
-        if mode == business_models.Promo.MODE_COMMON:
-            if not promo_common:
-                raise rest_framework.serializers.ValidationError(
-                    {
-                        'promo_common': (
-                            'This field is required for COMMON mode.'
-                        ),
-                    },
-                )
-
-            if promo_unique is not None:
-                raise rest_framework.serializers.ValidationError(
-                    {
-                        'promo_unique': (
-                            'This field is not allowed for COMMON mode.'
-                        ),
-                    },
-                )
-
-            if max_count < 0 or max_count > 100000000:
-                raise rest_framework.serializers.ValidationError(
-                    {
-                        'max_count': (
-                            'Must be between 0 and 100,000,000 '
-                            'for COMMON mode.'
-                        ),
-                    },
-                )
-
-        elif mode == business_models.Promo.MODE_UNIQUE:
-            if not promo_unique:
-                raise rest_framework.serializers.ValidationError(
-                    {
-                        'promo_unique': (
-                            'This field is required for UNIQUE mode.'
-                        ),
-                    },
-                )
-
-            if promo_common is not None:
-                raise rest_framework.serializers.ValidationError(
-                    {
-                        'promo_common': (
-                            'This field is not allowed for UNIQUE mode.'
-                        ),
-                    },
-                )
-
-            if max_count != 1:
-                raise rest_framework.serializers.ValidationError(
-                    {'max_count': 'Must be 1 for UNIQUE mode.'},
-                )
-
-        else:
-            raise rest_framework.serializers.ValidationError(
-                {'mode': 'Invalid mode.'},
-            )
-
-        active_from = data.get('active_from')
-        active_until = data.get('active_until')
-        if active_from and active_until and active_from > active_until:
-            raise rest_framework.serializers.ValidationError(
-                {'active_until': 'Must be after or equal to active_from.'},
-            )
-
-        return data
+        data = super().validate(data)
+        validator = business.validators.PromoValidator(data=data)
+        return validator.validate()
 
     def create(self, validated_data):
         target_data = validated_data.pop('target')
         promo_common = validated_data.pop('promo_common', None)
         promo_unique = validated_data.pop('promo_unique', None)
-        mode = validated_data['mode']
 
-        user = self.context['request'].user
-        validated_data['company'] = user
-
-        promo = business_models.Promo.objects.create(
+        return business_models.Promo.objects.create_promo(
+            user=self.context['request'].user,
+            target_data=target_data,
+            promo_common=promo_common,
+            promo_unique=promo_unique,
             **validated_data,
-            target=target_data,
         )
-
-        if mode == business_models.Promo.MODE_COMMON:
-            promo.promo_common = promo_common
-            promo.save()
-        elif mode == business_models.Promo.MODE_UNIQUE and promo_unique:
-            promo_codes = [
-                business_models.PromoCode(promo=promo, code=code)
-                for code in promo_unique
-            ]
-            business_models.PromoCode.objects.bulk_create(promo_codes)
-
-        return promo
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
@@ -505,74 +424,12 @@ class PromoDetailSerializer(rest_framework.serializers.ModelSerializer):
         return instance
 
     def validate(self, data):
-        instance = self.instance
-        full_data = {
-            'mode': instance.mode,
-            'promo_common': instance.promo_common,
-            'promo_unique': None,
-            'max_count': instance.max_count,
-            'active_from': instance.active_from,
-            'active_until': instance.active_until,
-            'target': instance.target if instance.target is not None else {},
-        }
-        full_data.update(data)
-        mode = full_data.get('mode')
-        promo_common = full_data.get('promo_common')
-        promo_unique = full_data.get('promo_unique')
-        max_count = full_data.get('max_count')
-
-        if mode == business_models.Promo.MODE_COMMON:
-            if not promo_common:
-                raise rest_framework.serializers.ValidationError(
-                    {
-                        'promo_common': (
-                            'This field is required for COMMON mode.'
-                        ),
-                    },
-                )
-
-            if promo_unique is not None:
-                raise rest_framework.serializers.ValidationError(
-                    {
-                        'promo_unique': (
-                            'This field is not allowed for COMMON mode.'
-                        ),
-                    },
-                )
-
-            if max_count < 0 or max_count > 100000000:
-                raise rest_framework.serializers.ValidationError(
-                    {'max_count': 'Must be between 0 and 100,000,000.'},
-                )
-
-        elif mode == business_models.Promo.MODE_UNIQUE:
-            if promo_common is not None:
-                raise rest_framework.serializers.ValidationError(
-                    {
-                        'promo_common': (
-                            'This field is not allowed for UNIQUE mode.'
-                        ),
-                    },
-                )
-
-            if max_count != 1:
-                raise rest_framework.serializers.ValidationError(
-                    {'max_count': 'Must be 1 for UNIQUE mode.'},
-                )
-        else:
-            raise rest_framework.serializers.ValidationError(
-                {'mode': 'Invalid mode.'},
-            )
-
-        active_from = full_data.get('active_from')
-        active_until = full_data.get('active_until')
-
-        if active_from and active_until and active_from > active_until:
-            raise rest_framework.serializers.ValidationError(
-                {'active_until': 'Must be after or equal to active_from.'},
-            )
-
-        return data
+        data = super().validate(data)
+        validator = business.validators.PromoValidator(
+            data=data,
+            instance=self.instance,
+        )
+        return validator.validate()
 
     def get_like_count(self, obj):
         return 0

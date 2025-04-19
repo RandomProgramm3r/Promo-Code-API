@@ -7,7 +7,6 @@ import business.tests.promocodes.base
 class TestPromoCreate(
     business.tests.promocodes.base.BasePromoTestCase,
 ):
-
     def setUp(self):
         super().setUp()
         self.client.credentials(

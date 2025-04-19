@@ -1,4 +1,5 @@
 import rest_framework.exceptions
+import rest_framework.permissions
 
 import business.models
 
@@ -22,3 +23,94 @@ class UniqueEmailValidator:
             )
             exc.status_code = self.status_code
             raise exc
+
+
+class PromoValidator:
+    def __init__(self, data, instance=None):
+        self.data = data
+        self.instance = instance
+        self.full_data = self._get_full_data()
+
+    def _get_full_data(self):
+        full_data = {}
+        if self.instance is not None:
+            full_data.update(
+                {
+                    'mode': self.instance.mode,
+                    'promo_common': self.instance.promo_common,
+                    'promo_unique': None,
+                    'max_count': self.instance.max_count,
+                    'active_from': self.instance.active_from,
+                    'active_until': self.instance.active_until,
+                    'target': self.instance.target
+                    if self.instance.target
+                    else {},
+                },
+            )
+
+        full_data.update(self.data)
+        return full_data
+
+    def validate(self):
+        mode = self.full_data.get('mode')
+        promo_common = self.full_data.get('promo_common')
+        promo_unique = self.full_data.get('promo_unique')
+        max_count = self.full_data.get('max_count')
+        active_from = self.full_data.get('active_from')
+        active_until = self.full_data.get('active_until')
+
+        if mode not in [
+            business.models.Promo.MODE_COMMON,
+            business.models.Promo.MODE_UNIQUE,
+        ]:
+            raise rest_framework.exceptions.ValidationError(
+                {'mode': 'Invalid mode.'},
+            )
+
+        if mode == business.models.Promo.MODE_COMMON:
+            if not promo_common:
+                raise rest_framework.exceptions.ValidationError(
+                    {
+                        'promo_common': (
+                            'This field is required for COMMON mode.'
+                        ),
+                    },
+                )
+            if promo_unique is not None:
+                raise rest_framework.exceptions.ValidationError(
+                    {
+                        'promo_unique': (
+                            'This field is not allowed for COMMON mode.'
+                        ),
+                    },
+                )
+            if max_count is None or not (0 <= max_count <= 100_000_000):
+                raise rest_framework.exceptions.ValidationError(
+                    {
+                        'max_count': (
+                            'Must be between 0 and 100,000,000 '
+                            'for COMMON mode.'
+                        ),
+                    },
+                )
+
+        elif mode == business.models.Promo.MODE_UNIQUE:
+            if promo_common is not None:
+                raise rest_framework.exceptions.ValidationError(
+                    {
+                        'promo_common': (
+                            'This field is not allowed for UNIQUE mode.'
+                        ),
+                    },
+                )
+            if max_count != 1:
+                raise rest_framework.exceptions.ValidationError(
+                    {'max_count': 'Must be 1 for UNIQUE mode.'},
+                )
+
+        if active_from and active_until and active_from > active_until:
+            raise rest_framework.exceptions.ValidationError(
+                {'active_until': 'Must be after or equal to active_from.'},
+            )
+
+        return self.full_data
