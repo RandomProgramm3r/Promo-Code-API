@@ -3,6 +3,7 @@ import uuid
 import django.contrib.auth.models
 import django.db.models
 
+import business.constants
 import business.managers
 
 
@@ -33,13 +34,6 @@ class Company(django.contrib.auth.models.AbstractBaseUser):
 
 
 class Promo(django.db.models.Model):
-    MODE_COMMON = 'COMMON'
-    MODE_UNIQUE = 'UNIQUE'
-    MODE_CHOICES = [
-        (MODE_COMMON, 'Common'),
-        (MODE_UNIQUE, 'Unique'),
-    ]
-
     id = django.db.models.UUIDField(
         'UUID',
         primary_key=True,
@@ -53,9 +47,11 @@ class Promo(django.db.models.Model):
         null=True,
         blank=True,
     )
-    description = django.db.models.CharField(max_length=300)
+    description = django.db.models.CharField(
+        max_length=business.constants.PROMO_DESC_MAX_LENGTH,
+    )
     image_url = django.db.models.URLField(
-        max_length=350,
+        max_length=business.constants.PROMO_IMAGE_URL_MAX_LENGTH,
         blank=True,
         null=True,
     )
@@ -63,9 +59,12 @@ class Promo(django.db.models.Model):
     max_count = django.db.models.IntegerField()
     active_from = django.db.models.DateField(null=True, blank=True)
     active_until = django.db.models.DateField(null=True, blank=True)
-    mode = django.db.models.CharField(max_length=10, choices=MODE_CHOICES)
+    mode = django.db.models.CharField(
+        max_length=10,
+        choices=business.constants.PROMO_MODE_CHOICES,
+    )
     promo_common = django.db.models.CharField(
-        max_length=30,
+        max_length=business.constants.PROMO_COMMON_CODE_MAX_LENGTH,
         blank=True,
         null=True,
     )
@@ -86,7 +85,9 @@ class PromoCode(django.db.models.Model):
         related_name='unique_codes',
         to_field='id',
     )
-    code = django.db.models.CharField(max_length=30)
+    code = django.db.models.CharField(
+        max_length=business.constants.PROMO_UNIQUE_CODE_MAX_LENGTH,
+    )
     is_used = django.db.models.BooleanField(default=False)
     used_at = django.db.models.DateTimeField(null=True, blank=True)
 
