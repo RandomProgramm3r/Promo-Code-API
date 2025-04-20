@@ -13,6 +13,7 @@ import rest_framework_simplejwt.serializers
 import rest_framework_simplejwt.tokens
 import rest_framework_simplejwt.views
 
+import business.constants
 import business.models as business_models
 import business.validators
 
@@ -151,26 +152,26 @@ class CompanyTokenRefreshSerializer(
 
 class TargetSerializer(rest_framework.serializers.Serializer):
     age_from = rest_framework.serializers.IntegerField(
-        min_value=0,
-        max_value=100,
+        min_value=business.constants.TARGET_AGE_MIN,
+        max_value=business.constants.TARGET_AGE_MAX,
         required=False,
     )
     age_until = rest_framework.serializers.IntegerField(
-        min_value=0,
-        max_value=100,
+        min_value=business.constants.TARGET_AGE_MIN,
+        max_value=business.constants.TARGET_AGE_MAX,
         required=False,
     )
     country = rest_framework.serializers.CharField(
-        max_length=2,
-        min_length=2,
+        max_length=business.constants.TARGET_COUNTRY_CODE_LENGTH,
+        min_length=business.constants.TARGET_COUNTRY_CODE_LENGTH,
         required=False,
     )
     categories = rest_framework.serializers.ListField(
         child=rest_framework.serializers.CharField(
-            min_length=2,
-            max_length=20,
+            min_length=business.constants.TARGET_CATEGORY_MIN_LENGTH,
+            max_length=business.constants.TARGET_CATEGORY_MAX_LENGTH,
         ),
-        max_length=20,
+        max_length=business.constants.TARGET_CATEGORY_MAX_ITEMS,
         required=False,
         allow_empty=True,
     )
@@ -202,31 +203,31 @@ class TargetSerializer(rest_framework.serializers.Serializer):
 
 class PromoCreateSerializer(rest_framework.serializers.ModelSerializer):
     description = rest_framework.serializers.CharField(
-        min_length=10,
-        max_length=300,
+        min_length=business.constants.PROMO_DESC_MIN_LENGTH,
+        max_length=business.constants.PROMO_DESC_MAX_LENGTH,
         required=True,
     )
     image_url = rest_framework.serializers.CharField(
         required=False,
-        max_length=350,
+        max_length=business.constants.PROMO_IMAGE_URL_MAX_LENGTH,
         validators=[
             django.core.validators.URLValidator(schemes=['http', 'https']),
         ],
     )
     target = TargetSerializer(required=True, allow_null=True)
     promo_common = rest_framework.serializers.CharField(
-        min_length=5,
-        max_length=30,
+        min_length=business.constants.PROMO_COMMON_CODE_MIN_LENGTH,
+        max_length=business.constants.PROMO_COMMON_CODE_MAX_LENGTH,
         required=False,
         allow_null=True,
     )
     promo_unique = rest_framework.serializers.ListField(
         child=rest_framework.serializers.CharField(
-            min_length=3,
-            max_length=30,
+            min_length=business.constants.PROMO_UNIQUE_CODE_MIN_LENGTH,
+            max_length=business.constants.PROMO_UNIQUE_CODE_MAX_LENGTH,
         ),
-        min_length=1,
-        max_length=5000,
+        min_length=business.constants.PROMO_UNIQUE_LIST_MIN_ITEMS,
+        max_length=business.constants.PROMO_UNIQUE_LIST_MAX_ITEMS,
         required=False,
         allow_null=True,
     )
@@ -267,7 +268,7 @@ class PromoCreateSerializer(rest_framework.serializers.ModelSerializer):
         data = super().to_representation(instance)
         data['target'] = instance.target
 
-        if instance.mode == business_models.Promo.MODE_UNIQUE:
+        if instance.mode == business.constants.PROMO_MODE_UNIQUE:
             data['promo_unique'] = [
                 code.code for code in instance.unique_codes.all()
             ]
@@ -318,18 +319,20 @@ class PromoReadOnlySerializer(rest_framework.serializers.ModelSerializer):
         )
 
     def get_promo_unique(self, obj):
-        if obj.mode == business_models.Promo.MODE_UNIQUE:
+        if obj.mode == business.constants.PROMO_MODE_UNIQUE:
             return [code.code for code in obj.unique_codes.all()]
 
         return None
 
     def get_like_count(self, obj):
+        # TODO
         return 0
 
     def get_used_count(self, obj):
-        if obj.mode == business_models.Promo.MODE_UNIQUE:
+        if obj.mode == business.constants.PROMO_MODE_UNIQUE:
             return obj.unique_codes.filter(is_used=True).count()
 
+        # TODO
         return 0
 
     def get_active(self, obj):
@@ -354,7 +357,7 @@ class PromoReadOnlySerializer(rest_framework.serializers.ModelSerializer):
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
-        if instance.mode == business_models.Promo.MODE_COMMON:
+        if instance.mode == business.constants.PROMO_MODE_COMMON:
             data.pop('promo_unique', None)
         else:
             data.pop('promo_common', None)
@@ -368,13 +371,13 @@ class PromoDetailSerializer(rest_framework.serializers.ModelSerializer):
         read_only=True,
     )
     description = rest_framework.serializers.CharField(
-        min_length=10,
-        max_length=300,
+        min_length=business.constants.PROMO_DESC_MIN_LENGTH,
+        max_length=business.constants.PROMO_DESC_MAX_LENGTH,
         required=True,
     )
     image_url = rest_framework.serializers.CharField(
         required=False,
-        max_length=350,
+        max_length=business.constants.PROMO_IMAGE_URL_MAX_LENGTH,
         validators=[
             django.core.validators.URLValidator(schemes=['http', 'https']),
         ],
@@ -407,7 +410,7 @@ class PromoDetailSerializer(rest_framework.serializers.ModelSerializer):
         )
 
     def get_promo_unique(self, obj):
-        if obj.mode == business_models.Promo.MODE_UNIQUE:
+        if obj.mode == business.constants.PROMO_MODE_UNIQUE:
             return [code.code for code in obj.unique_codes.all()]
 
         return None
@@ -432,10 +435,12 @@ class PromoDetailSerializer(rest_framework.serializers.ModelSerializer):
         return validator.validate()
 
     def get_like_count(self, obj):
+        # TODO
         return 0
 
     def get_used_count(self, obj):
-        if obj.mode == business_models.Promo.MODE_UNIQUE:
+        if obj.mode == business.constants.PROMO_MODE_UNIQUE:
             return obj.unique_codes.filter(is_used=True).count()
 
+        # TODO
         return 0

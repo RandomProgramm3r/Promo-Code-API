@@ -1,6 +1,6 @@
 import rest_framework.exceptions
-import rest_framework.permissions
 
+import business.constants
 import business.models
 
 
@@ -60,14 +60,14 @@ class PromoValidator:
         active_until = self.full_data.get('active_until')
 
         if mode not in [
-            business.models.Promo.MODE_COMMON,
-            business.models.Promo.MODE_UNIQUE,
+            business.constants.PROMO_MODE_COMMON,
+            business.constants.PROMO_MODE_UNIQUE,
         ]:
             raise rest_framework.exceptions.ValidationError(
                 {'mode': 'Invalid mode.'},
             )
 
-        if mode == business.models.Promo.MODE_COMMON:
+        if mode == business.constants.PROMO_MODE_COMMON:
             if not promo_common:
                 raise rest_framework.exceptions.ValidationError(
                     {
@@ -84,7 +84,11 @@ class PromoValidator:
                         ),
                     },
                 )
-            if max_count is None or not (0 <= max_count <= 100_000_000):
+            if max_count is None or not (
+                business.constants.PROMO_COMMON_MIN_COUNT
+                < max_count
+                <= business.constants.PROMO_COMMON_MAX_COUNT
+            ):
                 raise rest_framework.exceptions.ValidationError(
                     {
                         'max_count': (
@@ -94,7 +98,7 @@ class PromoValidator:
                     },
                 )
 
-        elif mode == business.models.Promo.MODE_UNIQUE:
+        elif mode == business.constants.PROMO_MODE_UNIQUE:
             if promo_common is not None:
                 raise rest_framework.exceptions.ValidationError(
                     {
@@ -103,7 +107,7 @@ class PromoValidator:
                         ),
                     },
                 )
-            if max_count != 1:
+            if max_count != business.constants.PROMO_UNIQUE_MAX_COUNT:
                 raise rest_framework.exceptions.ValidationError(
                     {'max_count': 'Must be 1 for UNIQUE mode.'},
                 )

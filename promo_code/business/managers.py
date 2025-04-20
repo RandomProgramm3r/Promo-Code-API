@@ -1,6 +1,7 @@
 import django.contrib.auth.models
 import django.db.models
 
+import business.constants
 import business.models
 
 
@@ -36,10 +37,12 @@ class PromoManager(django.db.models.Manager):
             **kwargs,
         )
 
-        if promo.mode == business.models.Promo.MODE_COMMON:
+        if promo.mode == business.constants.PROMO_MODE_COMMON:
             promo.promo_common = promo_common
             promo.save(update_fields=['promo_common'])
-        elif promo.mode == business.models.Promo.MODE_UNIQUE and promo_unique:
+        elif (
+            promo.mode == business.constants.PROMO_MODE_UNIQUE and promo_unique
+        ):
             self._create_unique_codes(promo, promo_unique)
 
         return promo
