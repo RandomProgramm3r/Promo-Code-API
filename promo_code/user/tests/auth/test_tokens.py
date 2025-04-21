@@ -141,7 +141,6 @@ class JWTTests(user.tests.auth.base.BaseUserAuthTestCase):
         )
 
     def test_blacklist_storage(self):
-
         self.client.post(self.signin_url, self.user_data, format='json')
 
         self.client.post(self.signin_url, self.user_data, format='json')

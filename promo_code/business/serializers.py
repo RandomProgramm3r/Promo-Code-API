@@ -3,15 +3,12 @@ import uuid
 import django.contrib.auth.password_validation
 import django.core.exceptions
 import django.core.validators
-import django.utils.timezone
 import pycountry
 import rest_framework.exceptions
 import rest_framework.serializers
-import rest_framework.status
 import rest_framework_simplejwt.exceptions
 import rest_framework_simplejwt.serializers
 import rest_framework_simplejwt.tokens
-import rest_framework_simplejwt.views
 
 import business.constants
 import business.models as business_models
@@ -24,19 +21,19 @@ class CompanySignUpSerializer(rest_framework.serializers.ModelSerializer):
         write_only=True,
         required=True,
         validators=[django.contrib.auth.password_validation.validate_password],
-        min_length=8,
-        max_length=60,
+        min_length=business.constants.COMPANY_PASSWORD_MIN_LENGTH,
+        max_length=business.constants.COMPANY_PASSWORD_MAX_LENGTH,
         style={'input_type': 'password'},
     )
     name = rest_framework.serializers.CharField(
         required=True,
-        min_length=5,
-        max_length=50,
+        min_length=business.constants.COMPANY_NAME_MIN_LENGTH,
+        max_length=business.constants.COMPANY_NAME_MAX_LENGTH,
     )
     email = rest_framework.serializers.EmailField(
         required=True,
-        min_length=8,
-        max_length=120,
+        min_length=business.constants.COMPANY_EMAIL_MIN_LENGTH,
+        max_length=business.constants.COMPANY_EMAIL_MAX_LENGTH,
         validators=[
             business.validators.UniqueEmailValidator(
                 'This email address is already registered.',
@@ -293,10 +290,17 @@ class PromoReadOnlySerializer(rest_framework.serializers.ModelSerializer):
         read_only=True,
     )
     target = TargetSerializer()
+
     promo_unique = rest_framework.serializers.SerializerMethodField()
     like_count = rest_framework.serializers.SerializerMethodField()
-    used_count = rest_framework.serializers.SerializerMethodField()
-    active = rest_framework.serializers.SerializerMethodField()
+    used_count = rest_framework.serializers.IntegerField(
+        source='get_used_codes_count',
+        read_only=True,
+    )
+    active = rest_framework.serializers.BooleanField(
+        source='is_active',
+        read_only=True,
+    )
 
     class Meta:
         model = business_models.Promo
@@ -319,41 +323,11 @@ class PromoReadOnlySerializer(rest_framework.serializers.ModelSerializer):
         )
 
     def get_promo_unique(self, obj):
-        if obj.mode == business.constants.PROMO_MODE_UNIQUE:
-            return [code.code for code in obj.unique_codes.all()]
-
-        return None
+        return obj.get_available_unique_codes
 
     def get_like_count(self, obj):
         # TODO
         return 0
-
-    def get_used_count(self, obj):
-        if obj.mode == business.constants.PROMO_MODE_UNIQUE:
-            return obj.unique_codes.filter(is_used=True).count()
-
-        # TODO
-        return 0
-
-    def get_active(self, obj):
-        now = django.utils.timezone.now().date()
-        active_from = obj.active_from
-        active_until = obj.active_until
-
-        date_active = True
-
-        if active_from and active_from > now:
-            date_active = False
-
-        if active_until and active_until < now:
-            date_active = False
-
-        else:
-            max_count_condition = obj.unique_codes.filter(
-                is_used=False,
-            ).exists()
-
-        return date_active and max_count_condition
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
@@ -389,7 +363,10 @@ class PromoDetailSerializer(rest_framework.serializers.ModelSerializer):
         read_only=True,
     )
     like_count = rest_framework.serializers.SerializerMethodField()
-    used_count = rest_framework.serializers.SerializerMethodField()
+    used_count = rest_framework.serializers.IntegerField(
+        source='get_used_codes_count',
+        read_only=True,
+    )
 
     class Meta:
         model = business_models.Promo
@@ -410,10 +387,7 @@ class PromoDetailSerializer(rest_framework.serializers.ModelSerializer):
         )
 
     def get_promo_unique(self, obj):
-        if obj.mode == business.constants.PROMO_MODE_UNIQUE:
-            return [code.code for code in obj.unique_codes.all()]
-
-        return None
+        return obj.get_available_unique_codes
 
     def update(self, instance, validated_data):
         target_data = validated_data.pop('target', None)
@@ -435,12 +409,5 @@ class PromoDetailSerializer(rest_framework.serializers.ModelSerializer):
         return validator.validate()
 
     def get_like_count(self, obj):
-        # TODO
-        return 0
-
-    def get_used_count(self, obj):
-        if obj.mode == business.constants.PROMO_MODE_UNIQUE:
-            return obj.unique_codes.filter(is_used=True).count()
-
         # TODO
         return 0
