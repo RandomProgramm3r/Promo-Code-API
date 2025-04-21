@@ -150,8 +150,27 @@ class CompanyPromoListView(rest_framework.generics.ListAPIView):
     pagination_class = business.pagination.CustomLimitOffsetPagination
 
     def get_queryset(self):
-        queryset = business.models.Promo.objects.filter(
-            company=self.request.user,
+        queryset = (
+            business.models.Promo.objects.filter(
+                company=self.request.user,
+            )
+            .select_related('company')
+            .prefetch_related('unique_codes')
+            .only(
+                'id',
+                'company',
+                'description',
+                'image_url',
+                'target',
+                'max_count',
+                'active_from',
+                'active_until',
+                'mode',
+                'promo_common',
+                'created_at',
+                'company__id',
+                'company__name',
+            )
         )
 
         countries = [
@@ -286,6 +305,31 @@ class CompanyPromoDetailView(rest_framework.views.APIView):
     ]
 
     lookup_field = 'id'
+
+    def get_queryset(self):
+        user = self.request.user
+        return (
+            business.models.Promo.objects.filter(company=user)
+            .select_related('company')
+            .prefetch_related('unique_codes')
+            .select_related('company')
+            .prefetch_related('unique_codes')
+            .only(
+                'id',
+                'company',
+                'description',
+                'image_url',
+                'target',
+                'max_count',
+                'active_from',
+                'active_until',
+                'mode',
+                'promo_common',
+                'created_at',
+                'company__id',
+                'company__name',
+            )
+        )
 
     def get(self, request, id):
         try:

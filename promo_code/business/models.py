@@ -2,6 +2,7 @@ import uuid
 
 import django.contrib.auth.models
 import django.db.models
+import django.utils.timezone
 
 import business.constants
 import business.managers
@@ -16,9 +17,11 @@ class Company(django.contrib.auth.models.AbstractBaseUser):
     )
     email = django.db.models.EmailField(
         unique=True,
-        max_length=120,
+        max_length=business.constants.COMPANY_EMAIL_MAX_LENGTH,
     )
-    name = django.db.models.CharField(max_length=50)
+    name = django.db.models.CharField(
+        max_length=business.constants.COMPANY_NAME_MAX_LENGTH,
+    )
 
     token_version = django.db.models.IntegerField(default=0)
     created_at = django.db.models.DateTimeField(auto_now_add=True)
@@ -76,6 +79,32 @@ class Promo(django.db.models.Model):
 
     def __str__(self):
         return f'Promo {self.id} ({self.mode})'
+
+    @property
+    def is_active(self) -> bool:
+        today = django.utils.timezone.timezone.now().date()
+        if self.active_from and self.active_from > today:
+            return False
+        if self.active_until and self.active_until < today:
+            return False
+
+        if self.mode == business.constants.PROMO_MODE_UNIQUE:
+            return self.unique_codes.filter(is_used=False).exists()
+        # TODO: COMMON Promo
+        return True
+
+    @property
+    def get_used_codes_count(self) -> int:
+        if self.mode == business.constants.PROMO_MODE_UNIQUE:
+            return self.unique_codes.filter(is_used=True).count()
+        # TODO: COMMON Promo
+        return 0
+
+    @property
+    def get_available_unique_codes(self) -> list[str] | None:
+        if self.mode == business.constants.PROMO_MODE_UNIQUE:
+            return [c.code for c in self.unique_codes.filter(is_used=False)]
+        return None
 
 
 class PromoCode(django.db.models.Model):

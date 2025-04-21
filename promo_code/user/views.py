@@ -44,7 +44,6 @@ class SignInView(
     serializer_class = user.serializers.SignInSerializer
 
     def post(self, request, *args, **kwargs):
-
         try:
             serializer = self.get_serializer(data=request.data)
             serializer.is_valid(raise_exception=True)

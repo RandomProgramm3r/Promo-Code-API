@@ -257,7 +257,6 @@ class InvalidUserRegistrationTestCase(
         )
 
     def test_empty_surname_field(self):
-
         data = {
             'name': 'Emma',
             'surname': '',
