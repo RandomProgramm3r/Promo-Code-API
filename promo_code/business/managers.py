@@ -22,6 +22,33 @@ class CompanyManager(django.contrib.auth.models.BaseUserManager):
 
 
 class PromoManager(django.db.models.Manager):
+    def get_queryset(self):
+        return super().get_queryset()
+
+    def with_related(self):
+        return (
+            self.select_related('company')
+            .prefetch_related('unique_codes')
+            .only(
+                'id',
+                'company',
+                'description',
+                'image_url',
+                'target',
+                'max_count',
+                'active_from',
+                'active_until',
+                'mode',
+                'promo_common',
+                'created_at',
+                'company__id',
+                'company__name',
+            )
+        )
+
+    def for_company(self, user):
+        return self.with_related().filter(company=user)
+
     @django.db.transaction.atomic
     def create_promo(
         self,
