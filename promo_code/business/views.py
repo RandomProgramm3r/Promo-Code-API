@@ -115,28 +115,35 @@ class CompanyTokenRefreshView(rest_framework_simplejwt.views.TokenRefreshView):
     serializer_class = business.serializers.CompanyTokenRefreshSerializer
 
 
-class PromoCreateView(rest_framework.views.APIView):
+class PromoCreateView(rest_framework.generics.CreateAPIView):
+    """
+    View for creating a new promo (POST).
+    """
+
     permission_classes = [
         rest_framework.permissions.IsAuthenticated,
         business.permissions.IsCompanyUser,
     ]
     serializer_class = business.serializers.PromoCreateSerializer
 
-    def post(self, request, *args, **kwargs):
-        serializer = self.serializer_class(
-            data=request.data,
-            context={'request': request},
-        )
-        if serializer.is_valid():
-            instance = serializer.save()
-            return rest_framework.response.Response(
-                {'id': str(instance.id)},
-                status=rest_framework.status.HTTP_201_CREATED,
-            )
+    def perform_create(self, serializer):
+        return serializer.save()
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+
+        serializer.is_valid(raise_exception=True)
+
+        instance = self.perform_create(serializer)
+
+        headers = self.get_success_headers(serializer.data)
+
+        response_data = {'id': str(instance.id)}
 
         return rest_framework.response.Response(
-            serializer.errors,
-            status=rest_framework.status.HTTP_400_BAD_REQUEST,
+            response_data,
+            status=rest_framework.status.HTTP_201_CREATED,
+            headers=headers,
         )
 
 
