@@ -228,10 +228,16 @@ class PromoCreateSerializer(rest_framework.serializers.ModelSerializer):
         required=False,
         allow_null=True,
     )
+    # headers
+    url = rest_framework.serializers.HyperlinkedIdentityField(
+        view_name='api-business:promo-detail',
+        lookup_field='id',
+    )
 
     class Meta:
         model = business_models.Promo
         fields = (
+            'url',
             'description',
             'image_url',
             'target',
