@@ -9,19 +9,15 @@ class CustomLimitOffsetPagination(
     max_limit = 100
 
     def get_limit(self, request):
-        param_limit = request.query_params.get(self.limit_query_param)
-        if param_limit is not None:
-            limit = int(param_limit)
+        raw_limit = request.query_params.get(self.limit_query_param)
 
-            if limit == 0:
-                return 0
+        if raw_limit is None:
+            return self.default_limit
 
-            if self.max_limit:
-                return min(limit, self.max_limit)
+        limit = int(raw_limit)
 
-            return limit
-
-        return self.default_limit
+        # Allow 0, otherwise cut by max_limit
+        return 0 if limit == 0 else min(limit, self.max_limit)
 
     def get_paginated_response(self, data):
         response = rest_framework.response.Response(data)

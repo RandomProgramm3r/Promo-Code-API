@@ -1,14 +1,11 @@
 import re
 
 import django.db.models
-import pycountry
-import rest_framework.exceptions
 import rest_framework.generics
 import rest_framework.permissions
 import rest_framework.response
 import rest_framework.serializers
 import rest_framework.status
-import rest_framework.views
 import rest_framework_simplejwt.exceptions
 import rest_framework_simplejwt.tokens
 import rest_framework_simplejwt.views
@@ -155,14 +152,21 @@ class CompanyPromoListView(rest_framework.generics.ListAPIView):
     serializer_class = business.serializers.PromoReadOnlySerializer
     pagination_class = business.pagination.CustomLimitOffsetPagination
 
+    def initial(self, request, *args, **kwargs):
+        super().initial(request, *args, **kwargs)
+
+        serializer = business.serializers.PromoListQuerySerializer(
+            data=request.query_params,
+        )
+        serializer.is_valid(raise_exception=True)
+        request.validated_query_params = serializer.validated_data
+
     def get_queryset(self):
+        params = self.request.validated_query_params
+        countries = [c.upper() for c in params.get('countries', [])]
+        sort_by = params.get('sort_by')
+
         queryset = business.models.Promo.objects.for_company(self.request.user)
-        countries = [
-            country.strip()
-            for group in self.request.query_params.getlist('country', [])
-            for country in group.split(',')
-            if country.strip()
-        ]
 
         if countries:
             regex_pattern = r'(' + '|'.join(map(re.escape, countries)) + ')'
@@ -171,115 +175,9 @@ class CompanyPromoListView(rest_framework.generics.ListAPIView):
                 | django.db.models.Q(target__country__isnull=True),
             )
 
-        sort_by = self.request.query_params.get('sort_by')
-        if sort_by in ['active_from', 'active_until']:
-            queryset = queryset.order_by(f'-{sort_by}')
-        else:
-            queryset = queryset.order_by('-created_at')  # noqa: R504
+        ordering = f'-{sort_by}' if sort_by else '-created_at'
 
-        return queryset  # noqa: R504
-
-    def list(self, request, *args, **kwargs):
-        try:
-            self.validate_query_params()
-        except rest_framework.exceptions.ValidationError as e:
-            return rest_framework.response.Response(
-                e.detail,
-                status=rest_framework.status.HTTP_400_BAD_REQUEST,
-            )
-
-        return super().list(request, *args, **kwargs)
-
-    def validate_query_params(self):
-        self._validate_allowed_params()
-        errors = {}
-        self._validate_countries(errors)
-        self._validate_sort_by(errors)
-        self._validate_offset()
-        self._validate_limit()
-        if errors:
-            raise rest_framework.exceptions.ValidationError(errors)
-
-    def _validate_allowed_params(self):
-        allowed_params = {'country', 'limit', 'offset', 'sort_by'}
-        unexpected_params = (
-            set(self.request.query_params.keys()) - allowed_params
-        )
-
-        if unexpected_params:
-            raise rest_framework.exceptions.ValidationError('Invalid params.')
-
-    def _validate_countries(self, errors):
-        countries = self.request.query_params.getlist('country', [])
-        country_list = []
-
-        for country_group in countries:
-            parts = [part.strip() for part in country_group.split(',')]
-
-            if any(part == '' for part in parts):
-                raise rest_framework.exceptions.ValidationError(
-                    'Invalid country format.',
-                )
-
-            country_list.extend(parts)
-
-        country_list = [c.strip().upper() for c in country_list if c.strip()]
-
-        invalid_countries = []
-
-        for code in country_list:
-            if len(code) != 2:
-                invalid_countries.append(code)
-                continue
-
-            try:
-                pycountry.countries.lookup(code)
-            except LookupError:
-                invalid_countries.append(code)
-
-        if invalid_countries:
-            errors['country'] = (
-                f'Invalid country codes: {", ".join(invalid_countries)}'
-            )
-
-    def _validate_sort_by(self, errors):
-        sort_by = self.request.query_params.get('sort_by')
-        if sort_by and sort_by not in ['active_from', 'active_until']:
-            errors['sort_by'] = (
-                'Invalid sort_by parameter. '
-                'Available values: active_from, active_until'
-            )
-
-    def _validate_offset(self):
-        offset = self.request.query_params.get('offset')
-        if offset is not None:
-            try:
-                offset = int(offset)
-            except (TypeError, ValueError):
-                raise rest_framework.exceptions.ValidationError(
-                    'Invalid offset format.',
-                )
-
-            if offset < 0:
-                raise rest_framework.exceptions.ValidationError(
-                    'Offset cannot be negative.',
-                )
-
-    def _validate_limit(self):
-        limit = self.request.query_params.get('limit')
-
-        if limit is not None:
-            try:
-                limit = int(limit)
-            except (TypeError, ValueError):
-                raise rest_framework.exceptions.ValidationError(
-                    'Invalid limit format.',
-                )
-
-            if limit < 0:
-                raise rest_framework.exceptions.ValidationError(
-                    'Limit cannot be negative.',
-                )
+        return queryset.order_by(ordering)
 
 
 class CompanyPromoDetailView(rest_framework.generics.RetrieveUpdateAPIView):
