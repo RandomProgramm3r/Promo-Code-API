@@ -282,6 +282,123 @@ class PromoCreateSerializer(rest_framework.serializers.ModelSerializer):
         return data
 
 
+class PromoListQuerySerializer(rest_framework.serializers.Serializer):
+    """
+    Serializer for validating query parameters of promo list requests.
+    """
+
+    limit = rest_framework.serializers.CharField(
+        required=False,
+        allow_blank=True,
+    )
+    offset = rest_framework.serializers.CharField(
+        required=False,
+        allow_blank=True,
+    )
+    sort_by = rest_framework.serializers.ChoiceField(
+        choices=['active_from', 'active_until'],
+        required=False,
+    )
+    country = rest_framework.serializers.CharField(
+        required=False,
+        allow_blank=True,
+    )
+
+    _allowed_params = None
+
+    def get_allowed_params(self):
+        if self._allowed_params is None:
+            self._allowed_params = set(self.fields.keys())
+        return self._allowed_params
+
+    def validate(self, attrs):
+        query_params = self.initial_data
+        allowed_params = self.get_allowed_params()
+
+        unexpected_params = set(query_params.keys()) - allowed_params
+        if unexpected_params:
+            raise rest_framework.exceptions.ValidationError('Invalid params.')
+
+        field_errors = {}
+
+        attrs = self._validate_int_field('limit', attrs, field_errors)
+        attrs = self._validate_int_field('offset', attrs, field_errors)
+
+        self._validate_country(query_params, attrs, field_errors)
+
+        if field_errors:
+            raise rest_framework.exceptions.ValidationError(field_errors)
+
+        return attrs
+
+    def _validate_int_field(self, field_name, attrs, field_errors):
+        value_str = self.initial_data.get(field_name)
+        if value_str is None:
+            return attrs
+
+        if value_str == '':
+            raise rest_framework.exceptions.ValidationError(
+                f'Invalid {field_name} format.',
+            )
+
+        try:
+            value_int = int(value_str)
+            if value_int < 0:
+                raise rest_framework.exceptions.ValidationError(
+                    f'{field_name.capitalize()} cannot be negative.',
+                )
+            attrs[field_name] = value_int
+        except (ValueError, TypeError):
+            raise rest_framework.exceptions.ValidationError(
+                f'Invalid {field_name} format.',
+            )
+
+        return attrs
+
+    def _validate_country(self, query_params, attrs, field_errors):
+        countries_raw = query_params.getlist('country', [])
+
+        if '' in countries_raw:
+            raise rest_framework.exceptions.ValidationError(
+                'Invalid country format.',
+            )
+
+        country_codes = []
+        invalid_codes = []
+
+        for country_group in countries_raw:
+            if not country_group.strip():
+                continue
+
+            parts = [part.strip() for part in country_group.split(',')]
+
+            if '' in parts:
+                raise rest_framework.exceptions.ValidationError(
+                    'Invalid country format.',
+                )
+
+            country_codes.extend(parts)
+
+        country_codes_upper = [c.upper() for c in country_codes]
+
+        for code in country_codes_upper:
+            if len(code) != 2:
+                invalid_codes.append(code)
+                continue
+            try:
+                pycountry.countries.lookup(code)
+            except LookupError:
+                invalid_codes.append(code)
+
+        if invalid_codes:
+            field_errors['country'] = (
+                f'Invalid country codes: {", ".join(invalid_codes)}'
+            )
+
+        attrs['countries'] = country_codes
+        attrs.pop('country', None)
+
+
 class PromoReadOnlySerializer(rest_framework.serializers.ModelSerializer):
     promo_id = rest_framework.serializers.UUIDField(
         source='id',
