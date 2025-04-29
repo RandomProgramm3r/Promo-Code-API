@@ -1,8 +1,8 @@
 import uuid
 
 import django.contrib.auth.password_validation
-import django.core.exceptions
 import django.core.validators
+import django.db.transaction
 import pycountry
 import rest_framework.exceptions
 import rest_framework.serializers
@@ -11,7 +11,10 @@ import rest_framework_simplejwt.serializers
 import rest_framework_simplejwt.tokens
 
 import business.constants
+import business.models
 import business.models as business_models
+import business.utils.auth
+import business.utils.tokens
 import business.validators
 
 
@@ -21,9 +24,9 @@ class CompanySignUpSerializer(rest_framework.serializers.ModelSerializer):
         write_only=True,
         required=True,
         validators=[django.contrib.auth.password_validation.validate_password],
+        style={'input_type': 'password'},
         min_length=business.constants.COMPANY_PASSWORD_MIN_LENGTH,
         max_length=business.constants.COMPANY_PASSWORD_MAX_LENGTH,
-        style={'input_type': 'password'},
     )
     name = rest_framework.serializers.CharField(
         required=True,
@@ -44,30 +47,18 @@ class CompanySignUpSerializer(rest_framework.serializers.ModelSerializer):
 
     class Meta:
         model = business_models.Company
-        fields = (
-            'id',
-            'name',
-            'email',
-            'password',
+        fields = ('id', 'name', 'email', 'password')
+
+    @django.db.transaction.atomic
+    def create(self, validated_data):
+        company = business_models.Company.objects.create_company(
+            **validated_data,
         )
 
-    def create(self, validated_data):
-        try:
-            company = business_models.Company.objects.create_company(
-                email=validated_data['email'],
-                name=validated_data['name'],
-                password=validated_data['password'],
-            )
-            company.token_version += 1
-            company.save()
-            return company
-        except django.core.exceptions.ValidationError as e:
-            raise rest_framework.serializers.ValidationError(e.messages)
+        return business.utils.auth.bump_company_token_version(company)
 
 
-class CompanySignInSerializer(
-    rest_framework.serializers.Serializer,
-):
+class CompanySignInSerializer(rest_framework.serializers.Serializer):
     email = rest_framework.serializers.EmailField(required=True)
     password = rest_framework.serializers.CharField(
         required=True,
@@ -80,16 +71,15 @@ class CompanySignInSerializer(
         password = attrs.get('password')
 
         if not email or not password:
-            raise rest_framework.exceptions.ValidationError(
-                {'detail': 'Both email and password are required'},
-                code='required',
+            raise rest_framework.serializers.ValidationError(
+                'Both email and password are required.',
             )
 
         try:
             company = business_models.Company.objects.get(email=email)
         except business_models.Company.DoesNotExist:
             raise rest_framework.serializers.ValidationError(
-                'Invalid credentials',
+                'Invalid credentials.',
             )
 
         if not company.is_active or not company.check_password(password):
@@ -98,6 +88,7 @@ class CompanySignInSerializer(
                 code='authentication_failed',
             )
 
+        attrs['company'] = company
         return attrs
 
 
@@ -105,46 +96,47 @@ class CompanyTokenRefreshSerializer(
     rest_framework_simplejwt.serializers.TokenRefreshSerializer,
 ):
     def validate(self, attrs):
+        attrs = super().validate(attrs)
         refresh = rest_framework_simplejwt.tokens.RefreshToken(
             attrs['refresh'],
         )
-        user_type = refresh.payload.get('user_type', 'user')
+        company = self.get_active_company_from_token(refresh)
 
-        if user_type != 'company':
+        company = business.utils.auth.bump_company_token_version(company)
+
+        return business.utils.tokens.generate_company_tokens(company)
+
+    def get_active_company_from_token(self, token):
+        if token.payload.get('user_type') != 'company':
             raise rest_framework_simplejwt.exceptions.InvalidToken(
                 'This refresh endpoint is for company tokens only',
             )
 
-        company_id = refresh.payload.get('company_id')
-        if not company_id:
+        company_id = token.payload.get('company_id')
+        try:
+            company_uuid = uuid.UUID(company_id)
+        except (TypeError, ValueError):
             raise rest_framework_simplejwt.exceptions.InvalidToken(
-                'Company ID missing in token',
+                'Invalid or missing company_id in token',
             )
 
         try:
-            company = business_models.Company.objects.get(
-                id=uuid.UUID(company_id),
+            company = business.models.Company.objects.get(
+                id=company_uuid,
+                is_active=True,
             )
-        except business_models.Company.DoesNotExist:
+        except business.models.Company.DoesNotExist:
             raise rest_framework_simplejwt.exceptions.InvalidToken(
-                'Company not found',
+                'Company not found or inactive',
             )
 
-        token_version = refresh.payload.get('token_version', 0)
+        token_version = token.payload.get('token_version', 0)
         if company.token_version != token_version:
             raise rest_framework_simplejwt.exceptions.InvalidToken(
                 'Token is blacklisted',
             )
 
-        new_refresh = rest_framework_simplejwt.tokens.RefreshToken()
-        new_refresh['user_type'] = 'company'
-        new_refresh['company_id'] = str(company.id)
-        new_refresh['token_version'] = company.token_version
-
-        return {
-            'access': str(new_refresh.access_token),
-            'refresh': str(new_refresh),
-        }
+        return company
 
 
 class TargetSerializer(rest_framework.serializers.Serializer):

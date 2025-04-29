@@ -187,7 +187,7 @@ class TestCompanyTokenRefresh(
             rest_framework.status.HTTP_401_UNAUTHORIZED,
         )
         self.assertIn(
-            'Company ID missing in token',
+            'Invalid or missing company_id in token',
             str(response.content.decode()),
         )
 
