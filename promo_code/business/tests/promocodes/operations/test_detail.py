@@ -22,7 +22,7 @@ class TestPromoDetail(business.tests.promocodes.base.BasePromoTestCase):
             'promo_common': 'sale-10',
         }
         response1 = client.post(
-            cls.promo_create_url,
+            cls.promo_list_create_url,
             promo1_data,
             format='json',
         )
@@ -38,7 +38,7 @@ class TestPromoDetail(business.tests.promocodes.base.BasePromoTestCase):
             'promo_unique': ['only_youuuu', 'not_only_you'],
         }
         response2 = client.post(
-            cls.promo_create_url,
+            cls.promo_list_create_url,
             promo2_data,
             format='json',
         )
@@ -269,7 +269,7 @@ class TestPromoDetail(business.tests.promocodes.base.BasePromoTestCase):
             rest_framework.status.HTTP_200_OK,
         )
 
-        response = self.client.get(self.promo_list_url)
+        response = self.client.get(self.promo_list_create_url)
         self.assertEqual(
             response.status_code,
             rest_framework.status.HTTP_200_OK,

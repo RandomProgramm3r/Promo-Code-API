@@ -38,7 +38,7 @@ class TestIsCompanyUserPermission(
     def create_promo(self, token, payload):
         self.client.credentials(HTTP_AUTHORIZATION='Bearer ' + token)
         response = self.client.post(
-            self.promo_create_url,
+            self.promo_list_create_url,
             payload,
             format='json',
         )
@@ -53,17 +53,17 @@ class TestIsCompanyUserPermission(
         user.models.User.objects.all().delete()
 
     def test_has_permission_for_company_user(self):
-        request = self.factory.get(self.promo_create_url)
+        request = self.factory.get(self.promo_list_create_url)
         request.user = self.company1
         self.assertTrue(self.permission.has_permission(request, None))
 
     def test_has_permission_for_regular_user(self):
-        request = self.factory.get(self.promo_create_url)
+        request = self.factory.get(self.promo_list_create_url)
         request.user = self.regular_user
         self.assertFalse(self.permission.has_permission(request, None))
 
     def test_has_permission_for_anonymous_user(self):
-        request = self.factory.get(self.promo_create_url)
+        request = self.factory.get(self.promo_list_create_url)
         request.user = None
         self.assertFalse(self.permission.has_permission(request, None))
 

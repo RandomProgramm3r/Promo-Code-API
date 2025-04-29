@@ -11,9 +11,8 @@ class BasePromoTestCase(rest_framework.test.APITestCase):
     def setUpTestData(cls):
         super().setUpTestData()
         cls.client = rest_framework.test.APIClient()
-        cls.promo_create_url = django.urls.reverse('api-business:promo-create')
-        cls.promo_list_url = django.urls.reverse(
-            'api-business:company-promo-list',
+        cls.promo_list_create_url = django.urls.reverse(
+            'api-business:promo-list-create',
         )
         cls.signup_url = django.urls.reverse('api-business:company-sign-up')
         cls.signin_url = django.urls.reverse('api-business:company-sign-in')

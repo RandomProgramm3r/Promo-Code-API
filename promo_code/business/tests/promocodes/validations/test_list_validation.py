@@ -17,7 +17,7 @@ class TestPromoList(
     def test_get_promos_without_token(self):
         self.client.credentials()
         client = rest_framework.test.APIClient()
-        response = client.get(self.promo_list_url)
+        response = client.get(self.promo_list_create_url)
         self.assertEqual(
             response.status_code,
             rest_framework.status.HTTP_401_UNAUTHORIZED,
@@ -47,7 +47,7 @@ class TestPromoList(
         ],
     )
     def test_invalid_query_string_parameters(self, name, params):
-        response = self.client.get(self.promo_list_url, params)
+        response = self.client.get(self.promo_list_create_url, params)
         self.assertEqual(
             response.status_code,
             rest_framework.status.HTTP_400_BAD_REQUEST,
@@ -66,7 +66,7 @@ class TestPromoList(
         ],
     )
     def test_invalid_numeric_parameters(self, name, params):
-        response = self.client.get(self.promo_list_url, params)
+        response = self.client.get(self.promo_list_create_url, params)
         self.assertEqual(
             response.status_code,
             rest_framework.status.HTTP_400_BAD_REQUEST,

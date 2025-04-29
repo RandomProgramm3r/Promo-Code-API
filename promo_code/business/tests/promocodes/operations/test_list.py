@@ -19,7 +19,7 @@ class TestPromoList(
             'promo_common': 'special-10',
         }
         response_create = self.client.post(
-            self.promo_create_url,
+            self.promo_list_create_url,
             self.__class__.promo5_data,
             format='json',
         )
@@ -99,7 +99,7 @@ class TestPromoList(
         )
 
     def test_get_all_promos(self):
-        response = self.client.get(self.promo_list_url)
+        response = self.client.get(self.promo_list_create_url)
         self.assertEqual(
             response.status_code,
             rest_framework.status.HTTP_200_OK,
@@ -113,7 +113,7 @@ class TestPromoList(
         self.assertEqual(response.headers.get('X-Total-Count'), '3')
 
     def test_get_promos_with_pagination_offset_1(self):
-        response = self.client.get(self.promo_list_url, {'offset': 1})
+        response = self.client.get(self.promo_list_create_url, {'offset': 1})
         self.assertEqual(
             response.status_code,
             rest_framework.status.HTTP_200_OK,
@@ -127,7 +127,7 @@ class TestPromoList(
 
     def test_get_promos_with_pagination_offset_1_limit_1(self):
         response = self.client.get(
-            self.promo_list_url,
+            self.promo_list_create_url,
             {'offset': 1, 'limit': 1},
         )
         self.assertEqual(
@@ -140,7 +140,7 @@ class TestPromoList(
         self.assertEqual(response.get('X-Total-Count'), '3')
 
     def test_get_promos_with_pagination_offset_100(self):
-        response = self.client.get(self.promo_list_url, {'offset': 100})
+        response = self.client.get(self.promo_list_create_url, {'offset': 100})
         self.assertEqual(
             response.status_code,
             rest_framework.status.HTTP_200_OK,
@@ -150,7 +150,10 @@ class TestPromoList(
         self.assertEqual(response.get('X-Total-Count'), '3')
 
     def test_get_promos_filter_country_gb(self):
-        response = self.client.get(self.promo_list_url, {'country': 'gb'})
+        response = self.client.get(
+            self.promo_list_create_url,
+            {'country': 'gb'},
+        )
         self.assertEqual(
             response.status_code,
             rest_framework.status.HTTP_200_OK,
@@ -164,7 +167,7 @@ class TestPromoList(
 
     def test_get_promos_filter_country_gb_sort_active_until(self):
         response = self.client.get(
-            self.promo_list_url,
+            self.promo_list_create_url,
             {'country': 'gb', 'sort_by': 'active_until'},
         )
         self.assertEqual(
@@ -180,7 +183,7 @@ class TestPromoList(
 
     def test_get_promos_filter_country_gb_fr_sort_active_from_limit_10(self):
         response = self.client.get(
-            self.promo_list_url,
+            self.promo_list_create_url,
             {'country': 'gb,FR', 'sort_by': 'active_from', 'limit': 10},
         )
         self.assertEqual(
@@ -199,7 +202,7 @@ class TestPromoList(
         self,
     ):
         response = self.client.get(
-            self.promo_list_url,
+            self.promo_list_create_url,
             {
                 'country': 'gb,FR',
                 'sort_by': 'active_from',
@@ -218,7 +221,7 @@ class TestPromoList(
 
     def test_get_promos_filter_country_gb_fr_us_sort_active_from_limit_2(self):
         response = self.client.get(
-            self.promo_list_url,
+            self.promo_list_create_url,
             {'country': 'gb,FR,us', 'sort_by': 'active_from', 'limit': 2},
         )
         self.assertEqual(
@@ -233,7 +236,7 @@ class TestPromoList(
         self.assertEqual(response.get('X-Total-Count'), '3')
 
     def test_get_promos_limit_zero(self):
-        response = self.client.get(self.promo_list_url, {'limit': 0})
+        response = self.client.get(self.promo_list_create_url, {'limit': 0})
         self.assertEqual(
             response.status_code,
             rest_framework.status.HTTP_200_OK,
@@ -245,7 +248,7 @@ class TestPromoList(
         self._create_additional_promo()
 
         response_list = self.client.get(
-            self.promo_list_url,
+            self.promo_list_create_url,
             {'country': 'gb,FR,Kz', 'sort_by': 'active_from', 'limit': 10},
         )
         self.assertEqual(
@@ -260,7 +263,7 @@ class TestPromoList(
     def test_get_promos_filter_gb_kz_fr(self):
         self._create_additional_promo()
         response = self.client.get(
-            self.promo_list_url,
+            self.promo_list_create_url,
             {'country': 'gb,Kz,FR', 'sort_by': 'active_from', 'limit': 10},
         )
         self.assertEqual(
@@ -275,7 +278,7 @@ class TestPromoList(
     def test_get_promos_filter_kz_sort_active_until(self):
         self._create_additional_promo()
         response = self.client.get(
-            self.promo_list_url,
+            self.promo_list_create_url,
             {'country': 'Kz', 'sort_by': 'active_until', 'limit': 10},
         )
         self.assertEqual(
@@ -300,7 +303,7 @@ class TestPromoList(
             'limit': 10,
         }
 
-        response = self.client.get(self.promo_list_url, full_params)
+        response = self.client.get(self.promo_list_create_url, full_params)
         self.assertEqual(
             response.status_code,
             rest_framework.status.HTTP_200_OK,
