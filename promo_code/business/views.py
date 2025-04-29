@@ -4,111 +4,61 @@ import django.db.models
 import rest_framework.generics
 import rest_framework.permissions
 import rest_framework.response
-import rest_framework.serializers
 import rest_framework.status
-import rest_framework_simplejwt.exceptions
-import rest_framework_simplejwt.tokens
 import rest_framework_simplejwt.views
 
 import business.models
 import business.pagination
 import business.permissions
 import business.serializers
-import core.views
+import business.utils.auth
+import business.utils.tokens
 
 
-class CompanySignUpView(
-    core.views.BaseCustomResponseMixin,
-    rest_framework.generics.CreateAPIView,
-):
+class CompanySignUpView(rest_framework.generics.CreateAPIView):
+    """
+    Company registration endpoint that returns JWT tokens.
+    """
+
     serializer_class = business.serializers.CompanySignUpSerializer
 
-    def post(self, request):
-        try:
-            serializer = business.serializers.CompanySignUpSerializer(
-                data=request.data,
-            )
-            serializer.is_valid(raise_exception=True)
-        except (
-            rest_framework.serializers.ValidationError,
-            rest_framework_simplejwt.exceptions.TokenError,
-        ) as e:
-            if isinstance(e, rest_framework.serializers.ValidationError):
-                return self.handle_validation_error()
-
-            raise rest_framework_simplejwt.exceptions.InvalidToken(str(e))
-
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
         company = serializer.save()
 
-        refresh = rest_framework_simplejwt.tokens.RefreshToken()
-        refresh['user_type'] = 'company'
-        refresh['company_id'] = str(company.id)
-        refresh['token_version'] = company.token_version
-
-        access_token = refresh.access_token
-        access_token['user_type'] = 'company'
-        access_token['company_id'] = str(company.id)
-        refresh['token_version'] = company.token_version
-
-        response_data = {
-            'access': str(access_token),
-            'refresh': str(refresh),
-        }
-
         return rest_framework.response.Response(
-            response_data,
+            business.utils.tokens.generate_company_tokens(company),
             status=rest_framework.status.HTTP_200_OK,
         )
 
 
-class CompanySignInView(
-    core.views.BaseCustomResponseMixin,
-    rest_framework_simplejwt.views.TokenObtainPairView,
-):
+class CompanySignInView(rest_framework.generics.GenericAPIView):
+    """
+    Company authentication endpoint that issues new JWT tokens
+    and bumps token_version.
+    """
+
     serializer_class = business.serializers.CompanySignInSerializer
 
-    def post(self, request):
-        try:
-            serializer = business.serializers.CompanySignInSerializer(
-                data=request.data,
-            )
-            serializer.is_valid(raise_exception=True)
-        except (
-            rest_framework.serializers.ValidationError,
-            rest_framework_simplejwt.exceptions.TokenError,
-        ) as e:
-            if isinstance(e, rest_framework.serializers.ValidationError):
-                return self.handle_validation_error()
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
 
-            raise rest_framework_simplejwt.exceptions.InvalidToken(str(e))
-
-        company = business.models.Company.objects.get(
-            email=serializer.validated_data['email'],
-        )
-        company.token_version += 1
-        company.save()
-
-        refresh = rest_framework_simplejwt.tokens.RefreshToken()
-        refresh['user_type'] = 'company'
-        refresh['company_id'] = str(company.id)
-        refresh['token_version'] = company.token_version
-
-        access_token = refresh.access_token
-        access_token['user_type'] = 'company'
-        access_token['company_id'] = str(company.id)
-
-        response_data = {
-            'access': str(access_token),
-            'refresh': str(refresh),
-        }
+        company = serializer.validated_data['company']
+        company = business.utils.auth.bump_company_token_version(company)
 
         return rest_framework.response.Response(
-            response_data,
+            business.utils.tokens.generate_company_tokens(company),
             status=rest_framework.status.HTTP_200_OK,
         )
 
 
 class CompanyTokenRefreshView(rest_framework_simplejwt.views.TokenRefreshView):
+    """
+    Refresh endpoint for company tokens only.
+    """
+
     serializer_class = business.serializers.CompanyTokenRefreshSerializer
 
 
