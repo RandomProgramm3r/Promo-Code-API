@@ -12,7 +12,6 @@ import rest_framework_simplejwt.tokens
 
 import business.constants
 import business.models
-import business.models as business_models
 import business.utils.auth
 import business.utils.tokens
 import business.validators
@@ -46,12 +45,12 @@ class CompanySignUpSerializer(rest_framework.serializers.ModelSerializer):
     )
 
     class Meta:
-        model = business_models.Company
+        model = business.models.Company
         fields = ('id', 'name', 'email', 'password')
 
     @django.db.transaction.atomic
     def create(self, validated_data):
-        company = business_models.Company.objects.create_company(
+        company = business.models.Company.objects.create_company(
             **validated_data,
         )
 
@@ -76,8 +75,8 @@ class CompanySignInSerializer(rest_framework.serializers.Serializer):
             )
 
         try:
-            company = business_models.Company.objects.get(email=email)
-        except business_models.Company.DoesNotExist:
+            company = business.models.Company.objects.get(email=email)
+        except business.models.Company.DoesNotExist:
             raise rest_framework.serializers.ValidationError(
                 'Invalid credentials.',
             )
@@ -227,7 +226,7 @@ class PromoCreateSerializer(rest_framework.serializers.ModelSerializer):
     )
 
     class Meta:
-        model = business_models.Promo
+        model = business.models.Promo
         fields = (
             'url',
             'description',
@@ -251,7 +250,7 @@ class PromoCreateSerializer(rest_framework.serializers.ModelSerializer):
         promo_common = validated_data.pop('promo_common', None)
         promo_unique = validated_data.pop('promo_unique', None)
 
-        return business_models.Promo.objects.create_promo(
+        return business.models.Promo.objects.create_promo(
             user=self.context['request'].user,
             target_data=target_data,
             promo_common=promo_common,
@@ -418,7 +417,7 @@ class PromoReadOnlySerializer(rest_framework.serializers.ModelSerializer):
     )
 
     class Meta:
-        model = business_models.Promo
+        model = business.models.Promo
         fields = (
             'promo_id',
             'company_id',
@@ -484,7 +483,7 @@ class PromoDetailSerializer(rest_framework.serializers.ModelSerializer):
     )
 
     class Meta:
-        model = business_models.Promo
+        model = business.models.Promo
         fields = (
             'promo_id',
             'description',

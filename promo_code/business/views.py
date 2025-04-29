@@ -62,29 +62,67 @@ class CompanyTokenRefreshView(rest_framework_simplejwt.views.TokenRefreshView):
     serializer_class = business.serializers.CompanyTokenRefreshSerializer
 
 
-class PromoCreateView(rest_framework.generics.CreateAPIView):
+class CompanyPromoListCreateView(rest_framework.generics.ListCreateAPIView):
     """
-    View for creating a new promo (POST).
+    View for listing (GET) and creating (POST) company promos.
     """
 
     permission_classes = [
         rest_framework.permissions.IsAuthenticated,
         business.permissions.IsCompanyUser,
     ]
-    serializer_class = business.serializers.PromoCreateSerializer
+    # Pagination is only needed for GET (listing)
+    pagination_class = business.pagination.CustomLimitOffsetPagination
+
+    _validated_query_params = {}
+
+    def get_serializer_class(self):
+        if self.request.method == 'POST':
+            return business.serializers.PromoCreateSerializer
+
+        return business.serializers.PromoReadOnlySerializer
+
+    def list(self, request, *args, **kwargs):
+        query_serializer = business.serializers.PromoListQuerySerializer(
+            data=request.query_params,
+        )
+        query_serializer.is_valid(raise_exception=True)
+        self._validated_query_params = query_serializer.validated_data
+
+        return super().list(request, *args, **kwargs)
+
+    def get_queryset(self):
+        params = self._validated_query_params
+        countries = [c.upper() for c in params.get('countries', [])]
+        sort_by = params.get('sort_by')
+
+        queryset = business.models.Promo.objects.for_company(self.request.user)
+
+        if countries:
+            # Using a regular expression for case-insensitive searching
+            regex_pattern = r'(' + '|'.join(map(re.escape, countries)) + ')'
+            country_filter = django.db.models.Q(
+                target__country__iregex=regex_pattern,
+            )
+
+            # Include promos where the country is not specified
+            queryset = queryset.filter(
+                country_filter
+                | django.db.models.Q(target__country__isnull=True),
+            )
+
+        ordering = f'-{sort_by}' if sort_by else '-created_at'
+
+        return queryset.order_by(ordering)
 
     def perform_create(self, serializer):
         return serializer.save()
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
-
         serializer.is_valid(raise_exception=True)
-
         instance = self.perform_create(serializer)
-
         headers = self.get_success_headers(serializer.data)
-
         response_data = {'id': str(instance.id)}
 
         return rest_framework.response.Response(
@@ -92,42 +130,6 @@ class PromoCreateView(rest_framework.generics.CreateAPIView):
             status=rest_framework.status.HTTP_201_CREATED,
             headers=headers,
         )
-
-
-class CompanyPromoListView(rest_framework.generics.ListAPIView):
-    permission_classes = [
-        rest_framework.permissions.IsAuthenticated,
-        business.permissions.IsCompanyUser,
-    ]
-    serializer_class = business.serializers.PromoReadOnlySerializer
-    pagination_class = business.pagination.CustomLimitOffsetPagination
-
-    def initial(self, request, *args, **kwargs):
-        super().initial(request, *args, **kwargs)
-
-        serializer = business.serializers.PromoListQuerySerializer(
-            data=request.query_params,
-        )
-        serializer.is_valid(raise_exception=True)
-        request.validated_query_params = serializer.validated_data
-
-    def get_queryset(self):
-        params = self.request.validated_query_params
-        countries = [c.upper() for c in params.get('countries', [])]
-        sort_by = params.get('sort_by')
-
-        queryset = business.models.Promo.objects.for_company(self.request.user)
-
-        if countries:
-            regex_pattern = r'(' + '|'.join(map(re.escape, countries)) + ')'
-            queryset = queryset.filter(
-                django.db.models.Q(target__country__iregex=regex_pattern)
-                | django.db.models.Q(target__country__isnull=True),
-            )
-
-        ordering = f'-{sort_by}' if sort_by else '-created_at'
-
-        return queryset.order_by(ordering)
 
 
 class CompanyPromoDetailView(rest_framework.generics.RetrieveUpdateAPIView):

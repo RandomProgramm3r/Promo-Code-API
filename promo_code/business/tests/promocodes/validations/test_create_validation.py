@@ -43,7 +43,7 @@ class TestPromoCreate(
             'promo_common': 'sale-10',
         }
         response = self.client.post(
-            self.promo_create_url,
+            self.promo_list_create_url,
             payload,
             format='json',
             HTTP_AUTHORIZATION='Bearer ' + str(old_token),
@@ -96,7 +96,7 @@ class TestPromoCreate(
     )
     def test_missing_fields(self, name, payload):
         response = self.client.post(
-            self.promo_create_url,
+            self.promo_list_create_url,
             payload,
             format='json',
         )
@@ -116,7 +116,7 @@ class TestPromoCreate(
             'promo_unique': ['uniq1', 'uniq2', 'uniq3'],
         }
         response = self.client.post(
-            self.promo_create_url,
+            self.promo_list_create_url,
             payload,
             format='json',
         )
@@ -136,7 +136,7 @@ class TestPromoCreate(
             'promo_unique': ['uniq1', 'uniq2', 'uniq3'],
         }
         response = self.client.post(
-            self.promo_create_url,
+            self.promo_list_create_url,
             payload,
             format='json',
         )
@@ -155,7 +155,7 @@ class TestPromoCreate(
             'promo_unique': ['only_youuuu', 'not_only_you'],
         }
         response = self.client.post(
-            self.promo_create_url,
+            self.promo_list_create_url,
             payload,
             format='json',
         )
@@ -179,7 +179,7 @@ class TestPromoCreate(
             'promo_unique': ['only_youuuu', 'not_only_you'],
         }
         response = self.client.post(
-            self.promo_create_url,
+            self.promo_list_create_url,
             payload,
             format='json',
         )
@@ -198,7 +198,7 @@ class TestPromoCreate(
             'promo_common': 'sale-40',
         }
         response = self.client.post(
-            self.promo_create_url,
+            self.promo_list_create_url,
             payload,
             format='json',
         )
@@ -220,7 +220,7 @@ class TestPromoCreate(
             'promo_common': 'sale-40',
         }
         response = self.client.post(
-            self.promo_create_url,
+            self.promo_list_create_url,
             payload,
             format='json',
         )
@@ -239,7 +239,7 @@ class TestPromoCreate(
             'promo_unique': ['sale-40'],
         }
         response = self.client.post(
-            self.promo_create_url,
+            self.promo_list_create_url,
             payload,
             format='json',
         )
@@ -258,7 +258,7 @@ class TestPromoCreate(
             'promo_common': 'sale-40',
         }
         response = self.client.post(
-            self.promo_create_url,
+            self.promo_list_create_url,
             payload,
             format='json',
         )
@@ -278,7 +278,7 @@ class TestPromoCreate(
             'promo_unique': ['opa'],
         }
         response = self.client.post(
-            self.promo_create_url,
+            self.promo_list_create_url,
             payload,
             format='json',
         )
@@ -297,7 +297,7 @@ class TestPromoCreate(
             'promo_common': 'str',  # too short
         }
         response = self.client.post(
-            self.promo_create_url,
+            self.promo_list_create_url,
             payload,
             format='json',
         )
@@ -351,7 +351,7 @@ class TestPromoCreate(
     )
     def test_invalid_type_payloads(self, name, payload):
         response = self.client.post(
-            self.promo_create_url,
+            self.promo_list_create_url,
             payload,
             format='json',
         )
@@ -376,7 +376,7 @@ class TestPromoCreate(
             'promo_common': 'something-here',
         }
         response = self.client.post(
-            self.promo_create_url,
+            self.promo_list_create_url,
             payload,
             format='json',
         )
@@ -404,7 +404,7 @@ class TestPromoCreate(
             'promo_common': 'something-here',
         }
         response = self.client.post(
-            self.promo_create_url,
+            self.promo_list_create_url,
             payload,
             format='json',
         )

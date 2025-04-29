@@ -28,7 +28,7 @@ class TestPromoDetail(business.tests.promocodes.base.BasePromoTestCase):
     def create_promo(self, token, payload):
         self.client.credentials(HTTP_AUTHORIZATION='Bearer ' + token)
         response = self.client.post(
-            self.promo_create_url,
+            self.promo_list_create_url,
             payload,
             format='json',
         )
