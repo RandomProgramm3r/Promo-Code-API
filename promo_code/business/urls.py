@@ -22,14 +22,9 @@ urlpatterns = [
         name='company-token-refresh',
     ),
     django.urls.path(
-        'promo/create',
-        business.views.PromoCreateView.as_view(),
-        name='promo-create',
-    ),
-    django.urls.path(
-        'promo/list',
-        business.views.CompanyPromoListView.as_view(),
-        name='company-promo-list',
+        'promo',
+        business.views.CompanyPromoListCreateView.as_view(),
+        name='promo-list-create',
     ),
     django.urls.path(
         'promo/<uuid:id>',
