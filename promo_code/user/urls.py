@@ -9,12 +9,12 @@ app_name = 'api-user'
 urlpatterns = [
     django.urls.path(
         'auth/sign-up',
-        user.views.SignUpView.as_view(),
+        user.views.UserSignUpView.as_view(),
         name='sign-up',
     ),
     django.urls.path(
         'auth/sign-in',
-        rest_framework_simplejwt.views.TokenObtainPairView.as_view(),
+        user.views.UserSignInView.as_view(),
         name='sign-in',
     ),
     django.urls.path(

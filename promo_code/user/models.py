@@ -2,6 +2,8 @@ import django.contrib.auth.models
 import django.db.models
 import django.utils.timezone
 
+import user.constants
+
 
 class UserManager(django.contrib.auth.models.BaseUserManager):
     def create_user(self, email, name, surname, password=None, **extra_fields):
@@ -36,13 +38,20 @@ class User(
     django.contrib.auth.models.AbstractBaseUser,
     django.contrib.auth.models.PermissionsMixin,
 ):
-    email = django.db.models.EmailField(unique=True, max_length=120)
-    name = django.db.models.CharField(max_length=100)
-    surname = django.db.models.CharField(max_length=120)
+    email = django.db.models.EmailField(
+        unique=True,
+        max_length=user.constants.EMAIL_MAX_LENGTH,
+    )
+    name = django.db.models.CharField(
+        max_length=user.constants.NAME_MAX_LENGTH,
+    )
+    surname = django.db.models.CharField(
+        max_length=user.constants.SURNAME_MAX_LENGTH,
+    )
     avatar_url = django.db.models.URLField(
         blank=True,
         null=True,
-        max_length=350,
+        max_length=user.constants.AVATAR_URL_MAX_LENGTH,
     )
     other = django.db.models.JSONField(default=dict)
 
