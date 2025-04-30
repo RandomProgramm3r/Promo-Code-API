@@ -1,15 +1,42 @@
 import django.contrib.auth.password_validation
 import django.core.exceptions
 import django.core.validators
+import django.db.models
+import pycountry
 import rest_framework.exceptions
 import rest_framework.serializers
-import rest_framework.status
 import rest_framework_simplejwt.serializers
 import rest_framework_simplejwt.token_blacklist.models as tb_models
 import rest_framework_simplejwt.tokens
 
+import user.constants
 import user.models as user_models
 import user.validators
+
+
+class OtherFieldSerializer(rest_framework.serializers.Serializer):
+    age = rest_framework.serializers.IntegerField(
+        required=True,
+        min_value=user.constants.AGE_MIN,
+        max_value=user.constants.AGE_MAX,
+    )
+    country = rest_framework.serializers.CharField(
+        required=True,
+        max_length=user.constants.COUNTRY_CODE_LENGTH,
+        min_length=user.constants.COUNTRY_CODE_LENGTH,
+    )
+
+    def validate(self, value):
+        country = value['country'].upper()
+
+        try:
+            pycountry.countries.lookup(country)
+        except LookupError:
+            raise rest_framework.serializers.ValidationError(
+                'Invalid ISO 3166-1 alpha-2 country code.',
+            )
+
+        return value
 
 
 class SignUpSerializer(rest_framework.serializers.ModelSerializer):
@@ -17,24 +44,24 @@ class SignUpSerializer(rest_framework.serializers.ModelSerializer):
         write_only=True,
         required=True,
         validators=[django.contrib.auth.password_validation.validate_password],
-        max_length=60,
-        min_length=8,
+        max_length=user.constants.PASSWORD_MAX_LENGTH,
+        min_length=user.constants.PASSWORD_MIN_LENGTH,
         style={'input_type': 'password'},
     )
     name = rest_framework.serializers.CharField(
         required=True,
-        min_length=1,
-        max_length=100,
+        min_length=user.constants.NAME_MIN_LENGTH,
+        max_length=user.constants.NAME_MAX_LENGTH,
     )
     surname = rest_framework.serializers.CharField(
         required=True,
-        min_length=1,
-        max_length=120,
+        min_length=user.constants.SURNAME_MIN_LENGTH,
+        max_length=user.constants.SURNAME_MAX_LENGTH,
     )
     email = rest_framework.serializers.EmailField(
         required=True,
-        min_length=8,
-        max_length=120,
+        min_length=user.constants.EMAIL_MIN_LENGTH,
+        max_length=user.constants.EMAIL_MAX_LENGTH,
         validators=[
             user.validators.UniqueEmailValidator(
                 'This email address is already registered.',
@@ -44,15 +71,12 @@ class SignUpSerializer(rest_framework.serializers.ModelSerializer):
     )
     avatar_url = rest_framework.serializers.CharField(
         required=False,
-        max_length=350,
+        max_length=user.constants.AVATAR_URL_MAX_LENGTH,
         validators=[
             django.core.validators.URLValidator(schemes=['http', 'https']),
         ],
     )
-    other = rest_framework.serializers.JSONField(
-        required=True,
-        validators=[user.validators.OtherFieldValidator()],
-    )
+    other = OtherFieldSerializer(required=True)
 
     class Meta:
         model = user_models.User
@@ -94,13 +118,14 @@ class SignInSerializer(
     def validate(self, attrs):
         user = self.authenticate_user(attrs)
 
-        self.update_token_version(user)
+        user.token_version = django.db.models.F('token_version') + 1
+        user.save(update_fields=['token_version'])
 
         data = super().validate(attrs)
 
         refresh = rest_framework_simplejwt.tokens.RefreshToken(data['refresh'])
 
-        self.invalidate_previous_tokens(user, refresh['jti'])
+        self.blacklist_other_tokens(user, refresh['jti'])
 
         return data
 
@@ -128,19 +153,18 @@ class SignInSerializer(
 
         return user
 
-    def invalidate_previous_tokens(self, user, current_jti):
-        outstanding_tokens = tb_models.OutstandingToken.objects.filter(
-            user=user,
-        ).exclude(jti=current_jti)
+    def blacklist_other_tokens(self, user, current_jti):
+        qs = tb_models.OutstandingToken.objects.filter(user=user).exclude(
+            jti=current_jti,
+        )
+        blacklisted = [tb_models.BlacklistedToken(token=tok) for tok in qs]
+        tb_models.BlacklistedToken.objects.bulk_create(
+            blacklisted,
+            ignore_conflicts=True,
+        )
 
-        for token in outstanding_tokens:
-            tb_models.BlacklistedToken.objects.get_or_create(token=token)
-
-    def update_token_version(self, user):
-        user.token_version += 1
-        user.save()
-
-    def get_token(self, user):
+    @classmethod
+    def get_token(cls, user):
         token = super().get_token(user)
         token['token_version'] = user.token_version
         return token
