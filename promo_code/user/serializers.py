@@ -10,7 +10,7 @@ import rest_framework_simplejwt.token_blacklist.models as tb_models
 import rest_framework_simplejwt.tokens
 
 import user.constants
-import user.models as user_models
+import user.models
 import user.validators
 
 
@@ -27,10 +27,10 @@ class OtherFieldSerializer(rest_framework.serializers.Serializer):
     )
 
     def validate(self, value):
-        country = value['country'].upper()
+        country = value['country']
 
         try:
-            pycountry.countries.lookup(country)
+            pycountry.countries.lookup(country.upper())
         except LookupError:
             raise rest_framework.serializers.ValidationError(
                 'Invalid ISO 3166-1 alpha-2 country code.',
@@ -79,7 +79,7 @@ class SignUpSerializer(rest_framework.serializers.ModelSerializer):
     other = OtherFieldSerializer(required=True)
 
     class Meta:
-        model = user_models.User
+        model = user.models.User
         fields = (
             'name',
             'surname',
@@ -91,7 +91,7 @@ class SignUpSerializer(rest_framework.serializers.ModelSerializer):
 
     def create(self, validated_data):
         try:
-            user = user_models.User.objects.create_user(
+            user_ = user.models.User.objects.create_user(
                 email=validated_data['email'],
                 name=validated_data['name'],
                 surname=validated_data['surname'],
@@ -99,9 +99,9 @@ class SignUpSerializer(rest_framework.serializers.ModelSerializer):
                 other=validated_data['other'],
                 password=validated_data['password'],
             )
-            user.token_version += 1
-            user.save()
-            return user
+            user_.token_version += 1
+            user_.save()
+            return user_
         except django.core.exceptions.ValidationError as e:
             raise rest_framework.serializers.ValidationError(e.messages)
 
@@ -168,3 +168,79 @@ class SignInSerializer(
         token = super().get_token(user)
         token['token_version'] = user.token_version
         return token
+
+
+class UserProfileSerializer(rest_framework.serializers.ModelSerializer):
+    name = rest_framework.serializers.CharField(
+        required=False,
+        min_length=user.constants.NAME_MIN_LENGTH,
+        max_length=user.constants.NAME_MAX_LENGTH,
+    )
+    surname = rest_framework.serializers.CharField(
+        required=False,
+        min_length=user.constants.SURNAME_MIN_LENGTH,
+        max_length=user.constants.SURNAME_MAX_LENGTH,
+    )
+    email = rest_framework.serializers.EmailField(
+        required=False,
+        min_length=user.constants.EMAIL_MIN_LENGTH,
+        max_length=user.constants.EMAIL_MAX_LENGTH,
+        validators=[
+            user.validators.UniqueEmailValidator(
+                'This email address is already registered.',
+                'email_conflict',
+            ),
+        ],
+    )
+    password = rest_framework.serializers.CharField(
+        write_only=True,
+        required=False,
+        validators=[django.contrib.auth.password_validation.validate_password],
+        max_length=user.constants.PASSWORD_MAX_LENGTH,
+        min_length=user.constants.PASSWORD_MIN_LENGTH,
+        style={'input_type': 'password'},
+    )
+    avatar_url = rest_framework.serializers.CharField(
+        required=False,
+        max_length=user.constants.AVATAR_URL_MAX_LENGTH,
+        validators=[
+            django.core.validators.URLValidator(schemes=['http', 'https']),
+        ],
+    )
+    other = OtherFieldSerializer(required=False)
+
+    class Meta:
+        model = user.models.User
+        fields = (
+            'name',
+            'surname',
+            'email',
+            'password',
+            'avatar_url',
+            'other',
+        )
+
+    def update(self, instance, validated_data):
+        password = validated_data.pop('password', None)
+
+        if password:
+            # do not invalidate the token
+            instance.set_password(password)
+
+        other_data = validated_data.pop('other', None)
+        if other_data is not None:
+            instance.other = other_data
+
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+
+        instance.save()
+        return instance
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        # If the response structure implies that a field is optional,
+        # the server MUST NOT return the field if it is missing.
+        if not instance.avatar_url:
+            data.pop('avatar_url', None)
+        return data

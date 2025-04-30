@@ -1,9 +1,11 @@
 import rest_framework.generics
+import rest_framework.permissions
 import rest_framework.response
 import rest_framework.status
 import rest_framework_simplejwt.tokens
 import rest_framework_simplejwt.views
 
+import user.models
 import user.serializers
 
 
@@ -37,3 +39,21 @@ class UserSignInView(
     rest_framework_simplejwt.views.TokenObtainPairView,
 ):
     serializer_class = user.serializers.SignInSerializer
+
+
+class UserProfileView(
+    rest_framework.generics.RetrieveUpdateAPIView,
+):
+    """
+    Retrieve (GET) and partially update (PATCH)
+    detailed user profile information.
+    """
+    http_method_names = ['get', 'patch', 'options', 'head']
+    serializer_class = user.serializers.UserProfileSerializer
+    permission_classes = [rest_framework.permissions.IsAuthenticated]
+
+    def get_object(self):
+        return self.request.user
+
+    def patch(self, request, *args, **kwargs):
+        return self.partial_update(request, *args, **kwargs)
