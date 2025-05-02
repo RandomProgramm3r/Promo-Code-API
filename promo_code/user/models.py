@@ -1,3 +1,5 @@
+import uuid
+
 import django.contrib.auth.models
 import django.db.models
 import django.utils.timezone
@@ -38,6 +40,12 @@ class User(
     django.contrib.auth.models.AbstractBaseUser,
     django.contrib.auth.models.PermissionsMixin,
 ):
+    id = django.db.models.UUIDField(
+        'UUID',
+        primary_key=True,
+        default=uuid.uuid4,
+        editable=False,
+    )
     email = django.db.models.EmailField(
         unique=True,
         max_length=user.constants.EMAIL_MAX_LENGTH,

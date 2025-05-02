@@ -14,6 +14,7 @@ class BaseUserAuthTestCase(rest_framework.test.APITestCase):
         cls.refresh_url = django.urls.reverse('api-user:user-token-refresh')
         cls.signup_url = django.urls.reverse('api-user:sign-up')
         cls.signin_url = django.urls.reverse('api-user:sign-in')
+        cls.user_profile_url = django.urls.reverse('api-user:user-profile')
 
     def tearDown(self):
         user.models.User.objects.all().delete()
