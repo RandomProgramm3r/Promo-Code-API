@@ -5,6 +5,8 @@ import rest_framework.status
 import rest_framework_simplejwt.tokens
 import rest_framework_simplejwt.views
 
+import business.constants
+import business.models
 import user.models
 import user.serializers
 
@@ -48,6 +50,7 @@ class UserProfileView(
     Retrieve (GET) and partially update (PATCH)
     detailed user profile information.
     """
+
     http_method_names = ['get', 'patch', 'options', 'head']
     serializer_class = user.serializers.UserProfileSerializer
     permission_classes = [rest_framework.permissions.IsAuthenticated]
@@ -57,3 +60,36 @@ class UserProfileView(
 
     def patch(self, request, *args, **kwargs):
         return self.partial_update(request, *args, **kwargs)
+
+
+class UserPromoDetailView(rest_framework.generics.RetrieveAPIView):
+    """
+    Retrieve (GET) information about the promo without receiving a promo code.
+    """
+
+    queryset = (
+        business.models.Promo.objects.select_related('company')
+        .prefetch_related(
+            'unique_codes',
+        )
+        .only(
+            'id',
+            'company__id',
+            'company__name',
+            'description',
+            'image_url',
+            'active',
+            'active_from',
+            'active_until',
+            'mode',
+            'used_count',
+        )
+    )
+
+    serializer_class = user.serializers.UserPromoDetailSerializer
+
+    permission_classes = [
+        rest_framework.permissions.IsAuthenticated,
+    ]
+
+    lookup_field = 'id'
