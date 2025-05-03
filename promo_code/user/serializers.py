@@ -9,6 +9,7 @@ import rest_framework_simplejwt.serializers
 import rest_framework_simplejwt.token_blacklist.models as tb_models
 import rest_framework_simplejwt.tokens
 
+import business.models
 import user.constants
 import user.models
 import user.validators
@@ -244,3 +245,64 @@ class UserProfileSerializer(rest_framework.serializers.ModelSerializer):
         if not instance.avatar_url:
             data.pop('avatar_url', None)
         return data
+
+
+class UserPromoDetailSerializer(rest_framework.serializers.ModelSerializer):
+    """
+    Serializer for detailed promo-code information
+    (without revealing the code value).
+    The output format matches the given example.
+    """
+
+    promo_id = rest_framework.serializers.UUIDField(
+        source='id',
+        read_only=True,
+    )
+    company_id = rest_framework.serializers.UUIDField(
+        source='company.id',
+        read_only=True,
+    )
+    company_name = rest_framework.serializers.CharField(
+        source='company.name',
+        read_only=True,
+    )
+    active = rest_framework.serializers.BooleanField(
+        source='is_active',
+        read_only=True,
+    )
+    is_activated_by_user = rest_framework.serializers.SerializerMethodField()
+    like_count = rest_framework.serializers.SerializerMethodField()
+    is_liked_by_user = rest_framework.serializers.SerializerMethodField()
+    comment_count = rest_framework.serializers.SerializerMethodField()
+
+    class Meta:
+        model = business.models.Promo
+        fields = (
+            'promo_id',
+            'company_id',
+            'company_name',
+            'description',
+            'image_url',
+            'active',
+            'is_activated_by_user',
+            'like_count',
+            'is_liked_by_user',
+            'comment_count',
+        )
+        read_only_fields = fields
+
+    def get_is_activated_by_user(self, obj) -> bool:
+        # TODO:
+        return False
+
+    def get_like_count(self, obj) -> int:
+        # TODO:
+        return 0
+
+    def get_is_liked_by_user(self, obj) -> bool:
+        # TODO:
+        return False
+
+    def get_comment_count(self, obj) -> int:
+        # TODO:
+        return 0

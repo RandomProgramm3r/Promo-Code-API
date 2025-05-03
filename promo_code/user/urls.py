@@ -27,4 +27,9 @@ urlpatterns = [
         user.views.UserProfileView.as_view(),
         name='user-profile',
     ),
+    django.urls.path(
+        'promo/<uuid:id>/',
+        user.views.UserPromoDetailView.as_view(),
+        name='user-promo-detail',
+    ),
 ]
