@@ -15,7 +15,9 @@ class ProfileAPITestCase(user.tests.auth.base.BaseUserAuthTestCase):
             'other': {'age': 48, 'country': 'gb'},
         }
         response = self.client.post(
-            self.signup_url, signup_data, format='json',
+            self.signup_url,
+            signup_data,
+            format='json',
         )
         token = response.data.get('access')
         self.client.credentials(HTTP_AUTHORIZATION='Bearer ' + token)
@@ -23,10 +25,13 @@ class ProfileAPITestCase(user.tests.auth.base.BaseUserAuthTestCase):
     def test_update_profile_empty_name_and_surname(self):
         payload = {'name': '', 'surname': ''}
         response = self.client.patch(
-            self.user_profile_url, payload, format='json',
+            self.user_profile_url,
+            payload,
+            format='json',
         )
         self.assertEqual(
-            response.status_code, rest_framework.status.HTTP_400_BAD_REQUEST,
+            response.status_code,
+            rest_framework.status.HTTP_400_BAD_REQUEST,
         )
 
     @parameterized.parameterized.expand(
@@ -39,10 +44,13 @@ class ProfileAPITestCase(user.tests.auth.base.BaseUserAuthTestCase):
     def test_update_profile_invalid_avatar_url(self, name, url):
         payload = {'avatar_url': url}
         response = self.client.patch(
-            self.user_profile_url, payload, format='json',
+            self.user_profile_url,
+            payload,
+            format='json',
         )
         self.assertEqual(
-            response.status_code, rest_framework.status.HTTP_400_BAD_REQUEST,
+            response.status_code,
+            rest_framework.status.HTTP_400_BAD_REQUEST,
         )
 
     @parameterized.parameterized.expand(
@@ -61,16 +69,20 @@ class ProfileAPITestCase(user.tests.auth.base.BaseUserAuthTestCase):
     def test_update_profile_weak_password(self, name, pwd):
         payload = {'password': pwd}
         response = self.client.patch(
-            self.user_profile_url, payload, format='json',
+            self.user_profile_url,
+            payload,
+            format='json',
         )
         self.assertEqual(
-            response.status_code, rest_framework.status.HTTP_400_BAD_REQUEST,
+            response.status_code,
+            rest_framework.status.HTTP_400_BAD_REQUEST,
         )
 
     def test_get_profile(self):
         response = self.client.get(self.user_profile_url, format='json')
         self.assertEqual(
-            response.status_code, rest_framework.status.HTTP_200_OK,
+            response.status_code,
+            rest_framework.status.HTTP_200_OK,
         )
         expected = {
             'name': 'Jack',

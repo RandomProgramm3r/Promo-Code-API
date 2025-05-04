@@ -14,7 +14,9 @@ class TestUserProfile(user.tests.auth.base.BaseUserAuthTestCase):
             'other': {'age': 23, 'country': 'us'},
         }
         response = self.client.post(
-            self.signup_url, signup_data, format='json',
+            self.signup_url,
+            signup_data,
+            format='json',
         )
         token = response.data.get('access')
         self.client.credentials(HTTP_AUTHORIZATION='Bearer ' + token)
@@ -23,7 +25,8 @@ class TestUserProfile(user.tests.auth.base.BaseUserAuthTestCase):
     def test_get_profile_initial(self):
         response = self.client.get(self.user_profile_url, format='json')
         self.assertEqual(
-            response.status_code, rest_framework.status.HTTP_200_OK,
+            response.status_code,
+            rest_framework.status.HTTP_200_OK,
         )
         expected = {
             'name': 'Steve',
@@ -36,10 +39,13 @@ class TestUserProfile(user.tests.auth.base.BaseUserAuthTestCase):
     def test_patch_profile_update_name_and_surname(self):
         payload = {'name': 'John', 'surname': 'Tsal'}
         response = self.client.patch(
-            self.user_profile_url, payload, format='json',
+            self.user_profile_url,
+            payload,
+            format='json',
         )
         self.assertEqual(
-            response.status_code, rest_framework.status.HTTP_200_OK,
+            response.status_code,
+            rest_framework.status.HTTP_200_OK,
         )
         self.assertEqual(response.data.get('name'), 'John')
         self.assertEqual(response.data.get('surname'), 'Tsal')
@@ -47,13 +53,17 @@ class TestUserProfile(user.tests.auth.base.BaseUserAuthTestCase):
     def test_patch_profile_update_avatar_url(self):
         payload = {'avatar_url': 'http://nodomain.com/kitten.jpeg'}
         response = self.client.patch(
-            self.user_profile_url, payload, format='json',
+            self.user_profile_url,
+            payload,
+            format='json',
         )
         self.assertEqual(
-            response.status_code, rest_framework.status.HTTP_200_OK,
+            response.status_code,
+            rest_framework.status.HTTP_200_OK,
         )
         self.assertEqual(
-            response.data.get('avatar_url'), 'http://nodomain.com/kitten.jpeg',
+            response.data.get('avatar_url'),
+            'http://nodomain.com/kitten.jpeg',
         )
 
     def test_patch_password_and_check_persistence(self):
@@ -69,10 +79,13 @@ class TestUserProfile(user.tests.auth.base.BaseUserAuthTestCase):
             format='json',
         )
         response = self.client.patch(
-            self.user_profile_url, {'password': new_password}, format='json',
+            self.user_profile_url,
+            {'password': new_password},
+            format='json',
         )
         self.assertEqual(
-            response.status_code, rest_framework.status.HTTP_200_OK,
+            response.status_code,
+            rest_framework.status.HTTP_200_OK,
         )
         data = response.data
         self.assertEqual(data.get('name'), 'John')
@@ -80,19 +93,23 @@ class TestUserProfile(user.tests.auth.base.BaseUserAuthTestCase):
         self.assertEqual(data.get('email'), 'creator@apple.com')
         self.assertEqual(data.get('other'), {'age': 23, 'country': 'us'})
         self.assertEqual(
-            data.get('avatar_url'), 'http://nodomain.com/kitten.jpeg',
+            data.get('avatar_url'),
+            'http://nodomain.com/kitten.jpeg',
         )
 
         # test old token still valid
         response = self.client.get(self.user_profile_url, format='json')
         self.assertEqual(
-            response.status_code, rest_framework.status.HTTP_200_OK,
+            response.status_code,
+            rest_framework.status.HTTP_200_OK,
         )
 
     def test_auth_sign_in_old_password_fails(self):
         new_password = 'MegaGiant88888@dooRuveS'
         response = self.client.patch(
-            self.user_profile_url, {'password': new_password}, format='json',
+            self.user_profile_url,
+            {'password': new_password},
+            format='json',
         )
         self.client.credentials()
         response = self.client.post(
@@ -104,13 +121,16 @@ class TestUserProfile(user.tests.auth.base.BaseUserAuthTestCase):
             format='json',
         )
         self.assertEqual(
-            response.status_code, rest_framework.status.HTTP_401_UNAUTHORIZED,
+            response.status_code,
+            rest_framework.status.HTTP_401_UNAUTHORIZED,
         )
 
     def test_auth_sign_in_new_password_succeeds(self):
         new_password = 'MegaGiant88888@dooRuveS'
         response = self.client.patch(
-            self.user_profile_url, {'password': new_password}, format='json',
+            self.user_profile_url,
+            {'password': new_password},
+            format='json',
         )
         self.client.credentials()
         response = self.client.post(
@@ -122,5 +142,6 @@ class TestUserProfile(user.tests.auth.base.BaseUserAuthTestCase):
             format='json',
         )
         self.assertEqual(
-            response.status_code, rest_framework.status.HTTP_200_OK,
+            response.status_code,
+            rest_framework.status.HTTP_200_OK,
         )
