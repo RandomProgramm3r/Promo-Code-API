@@ -1,9 +1,9 @@
 import rest_framework.status
 
-import user.tests.auth.base
+import user.tests.user.base
 
 
-class TestUserProfile(user.tests.auth.base.BaseUserAuthTestCase):
+class TestUserProfile(user.tests.user.base.BaseUserTestCase):
     def setUp(self):
         super().setUp()
         signup_data = {
