@@ -1,10 +1,10 @@
 import parameterized
 import rest_framework.status
 
-import user.tests.auth.base
+import user.tests.user.base
 
 
-class ProfileAPITestCase(user.tests.auth.base.BaseUserAuthTestCase):
+class ProfileAPITestCase(user.tests.user.base.BaseUserTestCase):
     def setUp(self):
         super().setUp()
         signup_data = {
