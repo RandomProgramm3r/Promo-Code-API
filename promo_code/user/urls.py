@@ -10,12 +10,12 @@ urlpatterns = [
     django.urls.path(
         'auth/sign-up',
         user.views.UserSignUpView.as_view(),
-        name='sign-up',
+        name='user-sign-up',
     ),
     django.urls.path(
         'auth/sign-in',
         user.views.UserSignInView.as_view(),
-        name='sign-in',
+        name='user-sign-in',
     ),
     django.urls.path(
         'token/refresh/',

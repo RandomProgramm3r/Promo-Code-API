@@ -22,7 +22,7 @@ class InvalidCompanyRegistrationTestCase(
         )
 
         response = self.client.post(
-            self.signup_url,
+            self.company_signup_url,
             self.valid_data,
             format='json',
         )
@@ -46,7 +46,11 @@ class InvalidCompanyRegistrationTestCase(
     )
     def test_invalid_password_cases(self, _, invalid_password):
         test_data = {**self.valid_data, 'password': invalid_password}
-        response = self.client.post(self.signup_url, test_data, format='json')
+        response = self.client.post(
+            self.company_signup_url,
+            test_data,
+            format='json',
+        )
         self.assertEqual(
             response.status_code,
             rest_framework.status.HTTP_400_BAD_REQUEST,
@@ -64,7 +68,11 @@ class InvalidCompanyRegistrationTestCase(
     )
     def test_invalid_email_cases(self, _, invalid_email):
         test_data = {**self.valid_data, 'email': invalid_email}
-        response = self.client.post(self.signup_url, test_data, format='json')
+        response = self.client.post(
+            self.company_signup_url,
+            test_data,
+            format='json',
+        )
         self.assertEqual(
             response.status_code,
             rest_framework.status.HTTP_400_BAD_REQUEST,
@@ -73,7 +81,11 @@ class InvalidCompanyRegistrationTestCase(
 
     def test_short_company_name(self):
         test_data = {**self.valid_data, 'name': 'A'}
-        response = self.client.post(self.signup_url, test_data, format='json')
+        response = self.client.post(
+            self.company_signup_url,
+            test_data,
+            format='json',
+        )
         self.assertEqual(
             response.status_code,
             rest_framework.status.HTTP_400_BAD_REQUEST,
@@ -90,8 +102,12 @@ class InvalidCompanyAuthenticationTestCase(
             ('empty_data', {}, ['email', 'password']),
         ],
     )
-    def test_missing_required_fields(self, case_name, data, expected_fields):
-        response = self.client.post(self.signin_url, data, format='json')
+    def test_missing_required_fields(self, _, data, expected_fields):
+        response = self.client.post(
+            self.company_signin_url,
+            data,
+            format='json',
+        )
         self.assertEqual(
             response.status_code,
             rest_framework.status.HTTP_400_BAD_REQUEST,
@@ -109,7 +125,7 @@ class InvalidCompanyAuthenticationTestCase(
             'password': 'SuperInvalidPassword2000!',
         }
         response = self.client.post(
-            self.signin_url,
+            self.company_signin_url,
             data,
             format='json',
         )

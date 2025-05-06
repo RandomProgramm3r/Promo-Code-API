@@ -11,7 +11,7 @@ class TestCompanyRegistration(
     def test_registration_success(self):
         registration_data = {**self.valid_data, 'email': 'unique@company.com'}
         response = self.client.post(
-            self.signup_url,
+            self.company_signup_url,
             registration_data,
             format='json',
         )

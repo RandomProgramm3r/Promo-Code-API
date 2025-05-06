@@ -15,8 +15,12 @@ class BaseBusinessAuthTestCase(rest_framework.test.APITestCase):
             'api-business:company-token-refresh',
         )
         cls.protected_url = django.urls.reverse('api-core:protected')
-        cls.signup_url = django.urls.reverse('api-business:company-sign-up')
-        cls.signin_url = django.urls.reverse('api-business:company-sign-in')
+        cls.company_signup_url = django.urls.reverse(
+            'api-business:company-sign-up',
+        )
+        cls.company_signin_url = django.urls.reverse(
+            'api-business:company-sign-in',
+        )
         cls.valid_data = {
             'name': 'Digital Marketing Solutions Inc.',
             'email': 'testcompany@example.com',

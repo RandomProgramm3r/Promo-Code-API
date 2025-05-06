@@ -1,5 +1,4 @@
 import rest_framework.status
-import rest_framework.test
 
 import user.models
 import user.tests.auth.base
@@ -20,7 +19,7 @@ class UserAuthenticationTests(user.tests.auth.base.BaseUserAuthTestCase):
             'password': 'SuperStrongPassword2000!',
         }
         response = self.client.post(
-            self.signin_url,
+            self.user_signin_url,
             data,
             format='json',
         )

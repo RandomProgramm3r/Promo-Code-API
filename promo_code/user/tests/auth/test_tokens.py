@@ -1,5 +1,4 @@
 import rest_framework.status
-import rest_framework.test
 import rest_framework_simplejwt.token_blacklist.models as tb_models
 
 import user.models
@@ -24,7 +23,7 @@ class JWTTests(user.tests.auth.base.BaseUserAuthTestCase):
 
     def test_access_protected_view_with_valid_token(self):
         response = self.client.post(
-            self.signin_url,
+            self.user_signin_url,
             self.user_data,
             format='json',
         )
@@ -48,7 +47,7 @@ class JWTTests(user.tests.auth.base.BaseUserAuthTestCase):
             'other': {'age': 22, 'country': 'us'},
         }
         response = self.client.post(
-            self.signup_url,
+            self.user_signup_url,
             data,
             format='json',
         )
@@ -65,7 +64,7 @@ class JWTTests(user.tests.auth.base.BaseUserAuthTestCase):
 
         login_data = {'email': data['email'], 'password': data['password']}
         response = self.client.post(
-            self.signin_url,
+            self.user_signin_url,
             login_data,
             format='json',
         )
@@ -91,7 +90,7 @@ class JWTTests(user.tests.auth.base.BaseUserAuthTestCase):
 
     def test_refresh_token_invalidation_after_new_login(self):
         first_login_response = self.client.post(
-            self.signin_url,
+            self.user_signin_url,
             self.user_data,
             format='json',
         )
@@ -99,7 +98,7 @@ class JWTTests(user.tests.auth.base.BaseUserAuthTestCase):
         refresh_token_v1 = first_login_response.data['refresh']
 
         second_login_response = self.client.post(
-            self.signin_url,
+            self.user_signin_url,
             self.user_data,
             format='json',
         )
@@ -141,9 +140,9 @@ class JWTTests(user.tests.auth.base.BaseUserAuthTestCase):
         )
 
     def test_blacklist_storage(self):
-        self.client.post(self.signin_url, self.user_data, format='json')
+        self.client.post(self.user_signin_url, self.user_data, format='json')
 
-        self.client.post(self.signin_url, self.user_data, format='json')
+        self.client.post(self.user_signin_url, self.user_data, format='json')
 
         self.assertEqual(
             (tb_models.BlacklistedToken.objects.count()),

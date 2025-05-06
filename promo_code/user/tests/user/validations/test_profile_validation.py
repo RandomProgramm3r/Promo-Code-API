@@ -15,7 +15,7 @@ class ProfileAPITestCase(user.tests.user.base.BaseUserTestCase):
             'other': {'age': 48, 'country': 'gb'},
         }
         response = self.client.post(
-            self.signup_url,
+            self.user_signup_url,
             signup_data,
             format='json',
         )
@@ -41,7 +41,7 @@ class ProfileAPITestCase(user.tests.user.base.BaseUserTestCase):
             ('no_domain', 'https://.com'),
         ],
     )
-    def test_update_profile_invalid_avatar_url(self, name, url):
+    def test_update_profile_invalid_avatar_url(self, _, url):
         payload = {'avatar_url': url}
         response = self.client.patch(
             self.user_profile_url,
@@ -66,7 +66,7 @@ class ProfileAPITestCase(user.tests.user.base.BaseUserTestCase):
             ('repeating_pattern', '11111@@@@@aaaaa'),
         ],
     )
-    def test_update_profile_weak_password(self, name, pwd):
+    def test_update_profile_weak_password(self, _, pwd):
         payload = {'password': pwd}
         response = self.client.patch(
             self.user_profile_url,

@@ -46,7 +46,7 @@ class TestPromoList(
             ),
         ],
     )
-    def test_invalid_query_string_parameters(self, name, params):
+    def test_invalid_query_string_parameters(self, _, params):
         response = self.client.get(self.promo_list_create_url, params)
         self.assertEqual(
             response.status_code,
@@ -65,7 +65,7 @@ class TestPromoList(
             ('empty_string_offset', {'offset': ''}),
         ],
     )
-    def test_invalid_numeric_parameters(self, name, params):
+    def test_invalid_numeric_parameters(self, _, params):
         response = self.client.get(self.promo_list_create_url, params)
         self.assertEqual(
             response.status_code,

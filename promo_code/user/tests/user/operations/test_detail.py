@@ -17,7 +17,7 @@ class TestUserPromoDetail(user.tests.user.base.BaseUserTestCase):
             'other': {'age': 80, 'country': 'sg'},
         }
         response = self.client.post(
-            self.signup_url,
+            self.user_signup_url,
             signup_payload,
             format='json',
         )

@@ -21,13 +21,13 @@ class TestPromoCreate(
             'password': 'SuperStrongPassword2000!',
         }
         reg_response = self.client.post(
-            self.signup_url,
+            self.company_signup_url,
             registration_data,
             format='json',
         )
         old_token = reg_response.data.get('token')
         self.client.post(
-            self.signin_url,
+            self.company_signin_url,
             {
                 'email': registration_data['email'],
                 'password': registration_data['password'],
@@ -94,7 +94,7 @@ class TestPromoCreate(
             ),
         ],
     )
-    def test_missing_fields(self, name, payload):
+    def test_missing_fields(self, _, payload):
         response = self.client.post(
             self.promo_list_create_url,
             payload,
@@ -349,7 +349,7 @@ class TestPromoCreate(
             ),
         ],
     )
-    def test_invalid_type_payloads(self, name, payload):
+    def test_invalid_type_payloads(self, _, payload):
         response = self.client.post(
             self.promo_list_create_url,
             payload,

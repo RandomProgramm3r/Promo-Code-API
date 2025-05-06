@@ -1,5 +1,4 @@
 import rest_framework.status
-import rest_framework.test
 
 import user.models
 import user.tests.auth.base
@@ -15,7 +14,7 @@ class UserRegistrationTests(user.tests.auth.base.BaseUserAuthTestCase):
             'other': {'age': 23, 'country': 'us'},
         }
         response = self.client.post(
-            self.signup_url,
+            self.user_signup_url,
             valid_data,
             format='json',
         )
