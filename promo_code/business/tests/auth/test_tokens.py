@@ -23,7 +23,7 @@ class JWTTests(business.tests.auth.base.BaseBusinessAuthTestCase):
 
     def test_access_protected_view_with_valid_token(self):
         response = self.client.post(
-            self.signin_url,
+            self.company_signin_url,
             self.user_data,
             format='json',
         )
@@ -45,7 +45,7 @@ class JWTTests(business.tests.auth.base.BaseBusinessAuthTestCase):
             'name': 'Digital Marketing Solutions Inc.',
         }
         response = self.client.post(
-            self.signup_url,
+            self.company_signup_url,
             data,
             format='json',
         )
@@ -62,7 +62,7 @@ class JWTTests(business.tests.auth.base.BaseBusinessAuthTestCase):
 
         login_data = {'email': data['email'], 'password': data['password']}
         response = self.client.post(
-            self.signin_url,
+            self.company_signin_url,
             login_data,
             format='json',
         )
@@ -214,14 +214,14 @@ class TestCompanyTokenRefresh(
 
     def test_refresh_token_invalidation_after_new_login(self):
         first_login_response = self.client.post(
-            self.signin_url,
+            self.company_signin_url,
             self.company_data,
             format='json',
         )
         refresh_token_v1 = first_login_response.data['refresh']
 
         second_login_response = self.client.post(
-            self.signin_url,
+            self.company_signin_url,
             self.company_data,
             format='json',
         )

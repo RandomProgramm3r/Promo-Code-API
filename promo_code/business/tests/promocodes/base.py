@@ -1,6 +1,4 @@
 import django.urls
-import rest_framework
-import rest_framework.status
 import rest_framework.test
 
 import business.models
@@ -14,8 +12,12 @@ class BasePromoTestCase(rest_framework.test.APITestCase):
         cls.promo_list_create_url = django.urls.reverse(
             'api-business:promo-list-create',
         )
-        cls.signup_url = django.urls.reverse('api-business:company-sign-up')
-        cls.signin_url = django.urls.reverse('api-business:company-sign-in')
+        cls.company_signup_url = django.urls.reverse(
+            'api-business:company-sign-up',
+        )
+        cls.company_signin_url = django.urls.reverse(
+            'api-business:company-sign-in',
+        )
 
         cls.company1_data = {
             'name': 'Digital Marketing Solutions Inc.',
@@ -38,7 +40,7 @@ class BasePromoTestCase(rest_framework.test.APITestCase):
         )
 
         response1 = cls.client.post(
-            cls.signin_url,
+            cls.company_signin_url,
             {
                 'email': cls.company1_data['email'],
                 'password': cls.company1_data['password'],
@@ -48,7 +50,7 @@ class BasePromoTestCase(rest_framework.test.APITestCase):
         cls.company1_token = response1.data['access']
 
         response2 = cls.client.post(
-            cls.signin_url,
+            cls.company_signin_url,
             {
                 'email': cls.company2_data['email'],
                 'password': cls.company2_data['password'],

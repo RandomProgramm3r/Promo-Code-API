@@ -14,7 +14,7 @@ class TestUserProfile(user.tests.user.base.BaseUserTestCase):
             'other': {'age': 23, 'country': 'us'},
         }
         response = self.client.post(
-            self.signup_url,
+            self.user_signup_url,
             signup_data,
             format='json',
         )
@@ -113,7 +113,7 @@ class TestUserProfile(user.tests.user.base.BaseUserTestCase):
         )
         self.client.credentials()
         response = self.client.post(
-            self.signin_url,
+            self.user_signin_url,
             {
                 'email': 'creator@apple.com',
                 'password': 'WhoLivesInCalifornia2000!',
@@ -134,7 +134,7 @@ class TestUserProfile(user.tests.user.base.BaseUserTestCase):
         )
         self.client.credentials()
         response = self.client.post(
-            self.signin_url,
+            self.user_signin_url,
             {
                 'email': 'creator@apple.com',
                 'password': 'MegaGiant88888@dooRuveS',

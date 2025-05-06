@@ -20,7 +20,7 @@ class AuthenticationTests(business.tests.auth.base.BaseBusinessAuthTestCase):
         )
 
         response = self.client.post(
-            self.signin_url,
+            self.company_signin_url,
             {
                 'email': registration_data['email'],
                 'password': registration_data['password'],

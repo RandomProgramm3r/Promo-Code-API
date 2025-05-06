@@ -1,6 +1,5 @@
 import parameterized
 import rest_framework.status
-import rest_framework.test
 
 import user.models
 import user.tests.auth.base
@@ -18,7 +17,7 @@ class InvalidUserRegistrationTestCase(
             'other': {'age': 23, 'country': 'us'},
         }
         response = self.client.post(
-            self.signup_url,
+            self.user_signup_url,
             valid_data,
             format='json',
         )
@@ -35,7 +34,7 @@ class InvalidUserRegistrationTestCase(
             'other': {'age': 14, 'country': 'fr'},
         }
         response = self.client.post(
-            self.signup_url,
+            self.user_signup_url,
             duplicate_data,
             format='json',
         )
@@ -66,7 +65,7 @@ class InvalidUserRegistrationTestCase(
         }
 
         response = self.client.post(
-            self.signup_url,
+            self.user_signup_url,
             data,
             format='json',
         )
@@ -102,7 +101,7 @@ class InvalidUserRegistrationTestCase(
         }
 
         response = self.client.post(
-            self.signup_url,
+            self.user_signup_url,
             data,
             format='json',
         )
@@ -122,7 +121,7 @@ class InvalidUserRegistrationTestCase(
             'other': {'age': 23},
         }
         response = self.client.post(
-            self.signup_url,
+            self.user_signup_url,
             data,
             format='json',
         )
@@ -144,7 +143,7 @@ class InvalidUserRegistrationTestCase(
         }
 
         response = self.client.post(
-            self.signup_url,
+            self.user_signup_url,
             invalid_data,
             format='json',
         )
@@ -164,7 +163,7 @@ class InvalidUserRegistrationTestCase(
             'other': {'age': '23aaaaaa', 'country': 'us'},
         }
         response = self.client.post(
-            self.signup_url,
+            self.user_signup_url,
             data,
             format='json',
         )
@@ -182,7 +181,7 @@ class InvalidUserRegistrationTestCase(
             'other': {'country': 'us'},
         }
         response = self.client.post(
-            self.signup_url,
+            self.user_signup_url,
             data,
             format='json',
         )
@@ -200,7 +199,7 @@ class InvalidUserRegistrationTestCase(
             'other': {'age': -20, 'country': 'us'},
         }
         response = self.client.post(
-            self.signup_url,
+            self.user_signup_url,
             data,
             format='json',
         )
@@ -227,7 +226,7 @@ class InvalidUserRegistrationTestCase(
         }
 
         response = self.client.post(
-            self.signup_url,
+            self.user_signup_url,
             data,
             format='json',
         )
@@ -247,7 +246,7 @@ class InvalidUserRegistrationTestCase(
             'other': {'age': 23, 'country': 'us'},
         }
         response = self.client.post(
-            self.signup_url,
+            self.user_signup_url,
             data,
             format='json',
         )
@@ -265,7 +264,7 @@ class InvalidUserRegistrationTestCase(
             'other': {'age': 23, 'country': 'us'},
         }
         response = self.client.post(
-            self.signup_url,
+            self.user_signup_url,
             data,
             format='json',
         )
@@ -285,8 +284,8 @@ class InvalidUserAuthenticationTestCase(
             ('empty_data', {}, ['email', 'password']),
         ],
     )
-    def test_missing_required_fields(self, case_name, data, expected_fields):
-        response = self.client.post(self.signin_url, data, format='json')
+    def test_missing_required_fields(self, _, data, expected_fields):
+        response = self.client.post(self.user_signin_url, data, format='json')
         self.assertEqual(
             response.status_code,
             rest_framework.status.HTTP_400_BAD_REQUEST,
@@ -312,7 +311,7 @@ class InvalidUserAuthenticationTestCase(
             'password': 'SuperInvalidPassword2000!',
         }
         response = self.client.post(
-            self.signin_url,
+            self.user_signin_url,
             data,
             format='json',
         )

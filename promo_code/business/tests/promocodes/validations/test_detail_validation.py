@@ -56,7 +56,7 @@ class TestPromoDetail(business.tests.promocodes.base.BasePromoTestCase):
             'password': self.company1_data['password'],
         }
         response = self.client.post(
-            self.signin_url,
+            self.company_signin_url,
             signin_payload,
             format='json',
         )
