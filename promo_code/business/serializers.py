@@ -481,6 +481,10 @@ class PromoDetailSerializer(rest_framework.serializers.ModelSerializer):
         source='get_used_codes_count',
         read_only=True,
     )
+    active = rest_framework.serializers.BooleanField(
+        source='is_active',
+        read_only=True,
+    )
 
     class Meta:
         model = business.models.Promo
@@ -496,6 +500,7 @@ class PromoDetailSerializer(rest_framework.serializers.ModelSerializer):
             'promo_common',
             'promo_unique',
             'company_name',
+            'active',
             'like_count',
             'used_count',
         )
