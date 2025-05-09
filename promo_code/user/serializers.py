@@ -9,6 +9,7 @@ import rest_framework_simplejwt.serializers
 import rest_framework_simplejwt.token_blacklist.models as tb_models
 import rest_framework_simplejwt.tokens
 
+import business.constants
 import business.models
 import user.constants
 import user.models
@@ -245,6 +246,124 @@ class UserProfileSerializer(rest_framework.serializers.ModelSerializer):
         if not instance.avatar_url:
             data.pop('avatar_url', None)
         return data
+
+
+class UserFeedQuerySerializer(rest_framework.serializers.Serializer):
+    """
+    Serializer for validating query parameters of promo feed requests.
+    """
+
+    limit = rest_framework.serializers.CharField(
+        required=False,
+        allow_blank=True,
+    )
+    offset = rest_framework.serializers.CharField(
+        required=False,
+        allow_blank=True,
+    )
+    category = rest_framework.serializers.CharField(
+        min_length=business.constants.TARGET_CATEGORY_MIN_LENGTH,
+        max_length=business.constants.TARGET_CATEGORY_MAX_LENGTH,
+        required=False,
+        allow_blank=True,
+    )
+    active = rest_framework.serializers.BooleanField(
+        required=False,
+        allow_null=True,
+    )
+
+    _allowed_params = None
+
+    def get_allowed_params(self):
+        if self._allowed_params is None:
+            self._allowed_params = set(self.fields.keys())
+        return self._allowed_params
+
+    def validate(self, attrs):
+        query_params = self.initial_data
+        allowed_params = self.get_allowed_params()
+
+        unexpected_params = set(query_params.keys()) - allowed_params
+        if unexpected_params:
+            raise rest_framework.exceptions.ValidationError('Invalid params.')
+
+        field_errors = {}
+
+        attrs = self._validate_int_field('limit', attrs, field_errors)
+        attrs = self._validate_int_field('offset', attrs, field_errors)
+
+        if field_errors:
+            raise rest_framework.exceptions.ValidationError(field_errors)
+
+        return attrs
+
+    def _validate_int_field(self, field_name, attrs, field_errors):
+        value_str = self.initial_data.get(field_name)
+        if value_str is None:
+            return attrs
+
+        if value_str == '':
+            raise rest_framework.exceptions.ValidationError(
+                f'Invalid {field_name} format.',
+            )
+
+        try:
+            value_int = int(value_str)
+            if value_int < 0:
+                raise rest_framework.exceptions.ValidationError(
+                    f'{field_name.capitalize()} cannot be negative.',
+                )
+            attrs[field_name] = value_int
+        except (ValueError, TypeError):
+            raise rest_framework.exceptions.ValidationError(
+                f'Invalid {field_name} format.',
+            )
+
+        return attrs
+
+
+class PromoFeedSerializer(rest_framework.serializers.ModelSerializer):
+    promo_id = rest_framework.serializers.UUIDField(source='id')
+    company_id = rest_framework.serializers.UUIDField(source='company.id')
+    company_name = rest_framework.serializers.CharField(source='company.name')
+    active = rest_framework.serializers.BooleanField(source='is_active')
+    is_activated_by_user = rest_framework.serializers.SerializerMethodField()
+    is_liked_by_user = rest_framework.serializers.SerializerMethodField()
+    like_count = rest_framework.serializers.SerializerMethodField()
+    comment_count = rest_framework.serializers.SerializerMethodField()
+
+    class Meta:
+        model = business.models.Promo
+        fields = [
+            'promo_id',
+            'company_id',
+            'company_name',
+            'description',
+            'image_url',
+            'active',
+            'is_activated_by_user',
+            'like_count',
+            'is_liked_by_user',
+            'comment_count',
+        ]
+
+        read_only_fields = fields
+
+    def get_is_activated_by_user(self, obj) -> bool:
+        # TODO:
+        return False
+
+    def get_like_count(self, obj) -> int:
+        # TODO:
+        return 0
+
+    def get_is_liked_by_user(self, obj) -> bool:
+        # TODO:
+        return False
+
+    def get_comment_count(self, obj) -> int:
+        # TODO:
+        return 0
 
 
 class UserPromoDetailSerializer(rest_framework.serializers.ModelSerializer):

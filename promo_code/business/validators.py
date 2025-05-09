@@ -56,8 +56,6 @@ class PromoValidator:
         promo_common = self.full_data.get('promo_common')
         promo_unique = self.full_data.get('promo_unique')
         max_count = self.full_data.get('max_count')
-        active_from = self.full_data.get('active_from')
-        active_until = self.full_data.get('active_until')
 
         if mode not in [
             business.constants.PROMO_MODE_COMMON,
@@ -86,7 +84,7 @@ class PromoValidator:
                 )
             if max_count is None or not (
                 business.constants.PROMO_COMMON_MIN_COUNT
-                < max_count
+                <= max_count
                 <= business.constants.PROMO_COMMON_MAX_COUNT
             ):
                 raise rest_framework.exceptions.ValidationError(
@@ -111,10 +109,5 @@ class PromoValidator:
                 raise rest_framework.exceptions.ValidationError(
                     {'max_count': 'Must be 1 for UNIQUE mode.'},
                 )
-
-        if active_from and active_until and active_from > active_until:
-            raise rest_framework.exceptions.ValidationError(
-                {'active_until': 'Must be after or equal to active_from.'},
-            )
 
         return self.full_data

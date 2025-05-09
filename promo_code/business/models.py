@@ -23,7 +23,7 @@ class Company(django.contrib.auth.models.AbstractBaseUser):
         max_length=business.constants.COMPANY_NAME_MAX_LENGTH,
     )
 
-    token_version = django.db.models.IntegerField(default=0)
+    token_version = django.db.models.PositiveIntegerField(default=0)
     created_at = django.db.models.DateTimeField(auto_now_add=True)
     is_active = django.db.models.BooleanField(default=True)
 
@@ -59,7 +59,11 @@ class Promo(django.db.models.Model):
         null=True,
     )
     target = django.db.models.JSONField(default=dict)
-    max_count = django.db.models.IntegerField()
+    max_count = django.db.models.PositiveIntegerField()
+    used_count = django.db.models.PositiveIntegerField(
+        default=0,
+        editable=False,
+    )
     active_from = django.db.models.DateField(null=True, blank=True)
     active_until = django.db.models.DateField(null=True, blank=True)
     mode = django.db.models.CharField(
@@ -82,7 +86,7 @@ class Promo(django.db.models.Model):
 
     @property
     def is_active(self) -> bool:
-        today = django.utils.timezone.timezone.now().date()
+        today = django.utils.timezone.now().date()
         if self.active_from and self.active_from > today:
             return False
         if self.active_until and self.active_until < today:
@@ -90,7 +94,9 @@ class Promo(django.db.models.Model):
 
         if self.mode == business.constants.PROMO_MODE_UNIQUE:
             return self.unique_codes.filter(is_used=False).exists()
-        # TODO: COMMON Promo
+        if self.mode == business.constants.PROMO_MODE_COMMON:
+            return self.used_count < self.max_count
+
         return True
 
     @property

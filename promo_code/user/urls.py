@@ -28,7 +28,12 @@ urlpatterns = [
         name='user-profile',
     ),
     django.urls.path(
-        'promo/<uuid:id>/',
+        'feed',
+        user.views.UserFeedView.as_view(),
+        name='user-feed',
+    ),
+    django.urls.path(
+        'promo/<uuid:id>',
         user.views.UserPromoDetailView.as_view(),
         name='user-promo-detail',
     ),
