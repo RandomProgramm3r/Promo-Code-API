@@ -152,10 +152,9 @@ class UserFeedView(rest_framework.generics.ListAPIView):
                 target__country__iexact=user_country,
             )
 
-        q_country_target_not_set_or_empty = (
-            ~django.db.models.Q(target__has_key='country')
-            | django.db.models.Q(target__country__isnull=True)
-        )
+        q_country_target_not_set_or_empty = ~django.db.models.Q(
+            target__has_key='country',
+        ) | django.db.models.Q(target__country__isnull=True)
         q_user_meets_country_target = (
             q_country_target_matches | q_country_target_not_set_or_empty
         )
