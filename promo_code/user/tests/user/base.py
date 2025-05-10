@@ -14,6 +14,11 @@ class BaseUserTestCase(rest_framework.test.APITestCase):
         cls.user_signup_url = django.urls.reverse('api-user:user-sign-up')
         cls.user_signin_url = django.urls.reverse('api-user:user-sign-in')
         cls.user_profile_url = django.urls.reverse('api-user:user-profile')
+        cls.user_feed_url = django.urls.reverse('api-user:user-feed')
+
+        cls.company_signin_url = django.urls.reverse(
+            'api-business:company-sign-in',
+        )
         cls.promo_list_create_url = django.urls.reverse(
             'api-business:promo-list-create',
         )
@@ -28,9 +33,7 @@ class BaseUserTestCase(rest_framework.test.APITestCase):
             email=company1_data['email'],
         )
         response1 = cls.client.post(
-            django.urls.reverse(
-                'api-business:company-sign-in',
-            ),
+            cls.company_signin_url,
             {
                 'email': company1_data['email'],
                 'password': company1_data['password'],
@@ -38,6 +41,28 @@ class BaseUserTestCase(rest_framework.test.APITestCase):
             format='json',
         )
         cls.company1_token = response1.data['access']
+        cls.company1_name = cls.company1.name
+
+        company2_data = {
+            'name': 'Synergy Solutions Co.',
+            'email': 'company2@example.com',
+            'password': 'AnotherSecurePass456!',
+        }
+        business.models.Company.objects.create_company(**company2_data)
+
+        cls.company2 = business.models.Company.objects.get(
+            email=company2_data['email'],
+        )
+        response2 = cls.client.post(
+            cls.company_signin_url,
+            {
+                'email': company2_data['email'],
+                'password': company2_data['password'],
+            },
+            format='json',
+        )
+        cls.company2_token = response2.data['access']
+        cls.company2_name = cls.company2.name
 
     def tearDown(self):
         business.models.Company.objects.all().delete()
@@ -52,5 +77,12 @@ class BaseUserTestCase(rest_framework.test.APITestCase):
     def promo_detail_url(cls, promo_id):
         return django.urls.reverse(
             'api-user:user-promo-detail',
+            kwargs={'id': promo_id},
+        )
+
+    @classmethod
+    def get_promo_business_detail_url(cls, promo_id):
+        return django.urls.reverse(
+            'api-business:promo-detail',
             kwargs={'id': promo_id},
         )
