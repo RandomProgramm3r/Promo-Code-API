@@ -297,6 +297,19 @@ class UserFeedQuerySerializer(rest_framework.serializers.Serializer):
 
         return attrs
 
+    def validate_category(self, value):
+        cotegory = self.initial_data.get('category')
+
+        if cotegory is None:
+            return value
+
+        if value == '':
+            raise rest_framework.exceptions.ValidationError(
+                'Invalid category format.',
+            )
+
+        return value
+
     def _validate_int_field(self, field_name, attrs, field_errors):
         value_str = self.initial_data.get(field_name)
         if value_str is None:

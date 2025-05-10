@@ -59,7 +59,12 @@ class TestUserPromoDetail(user.tests.user.base.BaseUserTestCase):
 
         promo_us = {
             'description': 'Gift sleeping mask with car loan application',
-            'target': {'age_from': 28, 'age_until': 50, 'country': 'us'},
+            'target': {
+                'age_from': 28,
+                'age_until': 50,
+                'country': 'us',
+                'categories': ['cars'],
+            },
             'max_count': 1,
             'active_from': '2025-01-01',
             'active_until': '2028-12-30',
