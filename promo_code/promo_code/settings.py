@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     #
     'business.apps.BusinessConfig',
     'core.apps.CoreConfig',
+    'interactions.apps.InteractionsConfig',
     'user.apps.UserConfig',
 ]
 
