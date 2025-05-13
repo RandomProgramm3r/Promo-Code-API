@@ -64,6 +64,10 @@ class Promo(django.db.models.Model):
         default=0,
         editable=False,
     )
+    like_count = django.db.models.PositiveIntegerField(
+        default=0,
+        editable=False,
+    )
     active_from = django.db.models.DateField(null=True, blank=True)
     active_until = django.db.models.DateField(null=True, blank=True)
     mode = django.db.models.CharField(
@@ -98,6 +102,10 @@ class Promo(django.db.models.Model):
             return self.used_count < self.max_count
 
         return True
+
+    @property
+    def get_like_count(self) -> int:
+        return self.like_count
 
     @property
     def get_used_codes_count(self) -> int:

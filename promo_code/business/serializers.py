@@ -406,7 +406,10 @@ class PromoReadOnlySerializer(rest_framework.serializers.ModelSerializer):
     target = TargetSerializer()
 
     promo_unique = rest_framework.serializers.SerializerMethodField()
-    like_count = rest_framework.serializers.SerializerMethodField()
+    like_count = rest_framework.serializers.IntegerField(
+        source='get_like_count',
+        read_only=True,
+    )
     used_count = rest_framework.serializers.IntegerField(
         source='get_used_codes_count',
         read_only=True,
@@ -438,10 +441,6 @@ class PromoReadOnlySerializer(rest_framework.serializers.ModelSerializer):
 
     def get_promo_unique(self, obj):
         return obj.get_available_unique_codes
-
-    def get_like_count(self, obj):
-        # TODO
-        return 0
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
@@ -476,7 +475,10 @@ class PromoDetailSerializer(rest_framework.serializers.ModelSerializer):
         source='company.name',
         read_only=True,
     )
-    like_count = rest_framework.serializers.SerializerMethodField()
+    like_count = rest_framework.serializers.IntegerField(
+        source='get_like_count',
+        read_only=True,
+    )
     used_count = rest_framework.serializers.IntegerField(
         source='get_used_codes_count',
         read_only=True,
@@ -526,7 +528,3 @@ class PromoDetailSerializer(rest_framework.serializers.ModelSerializer):
             instance=self.instance,
         )
         return validator.validate()
-
-    def get_like_count(self, obj):
-        # TODO
-        return 0

@@ -4,6 +4,7 @@ import django.contrib.auth.models
 import django.db.models
 import django.utils.timezone
 
+import business.models
 import user.constants
 
 
@@ -82,3 +83,34 @@ class User(
             self.last_login = django.utils.timezone.now()
 
         super().save(*args, **kwargs)
+
+
+class PromoLike(django.db.models.Model):
+    id = django.db.models.UUIDField(
+        'UUID',
+        primary_key=True,
+        default=uuid.uuid4,
+        editable=False,
+    )
+    user = django.db.models.ForeignKey(
+        User,
+        on_delete=django.db.models.CASCADE,
+        related_name='promo_likes',
+    )
+    promo = django.db.models.ForeignKey(
+        business.models.Promo,
+        on_delete=django.db.models.CASCADE,
+        related_name='likes',
+    )
+    created_at = django.db.models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            django.db.models.UniqueConstraint(
+                fields=['user', 'promo'],
+                name='unique_like',
+            ),
+        ]
+
+    def __str__(self):
+        return f'{self.user} likes {self.promo}'
