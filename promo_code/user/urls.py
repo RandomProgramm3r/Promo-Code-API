@@ -37,4 +37,9 @@ urlpatterns = [
         user.views.UserPromoDetailView.as_view(),
         name='user-promo-detail',
     ),
+    django.urls.path(
+        'promo/<uuid:id>/like',
+        user.views.UserPromoLikeView.as_view(),
+        name='user-promo-like',
+    ),
 ]

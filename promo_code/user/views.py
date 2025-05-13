@@ -1,14 +1,17 @@
 import django.db.models
+import django.shortcuts
 import django.utils.timezone
 import rest_framework.generics
 import rest_framework.permissions
 import rest_framework.response
 import rest_framework.status
+import rest_framework.views
 import rest_framework_simplejwt.tokens
 import rest_framework_simplejwt.views
 
 import business.constants
 import business.models
+import user.models
 import user.pagination
 import user.serializers
 
@@ -224,3 +227,52 @@ class UserFeedView(rest_framework.generics.ListAPIView):
         self.validated_query_params = query_serializer.validated_data
 
         return super().list(request, *args, **kwargs)
+
+
+class UserPromoLikeView(rest_framework.views.APIView):
+    permission_classes = [rest_framework.permissions.IsAuthenticated]
+
+    def get_promo_object(self, promo_id):
+        return django.shortcuts.get_object_or_404(
+            business.models.Promo,
+            id=promo_id,
+        )
+
+    def post(self, request, id):
+        """Add a like to the promo code."""
+        promo = self.get_promo_object(id)
+
+        created = user.models.PromoLike.objects.get_or_create(
+            user=request.user,
+            promo=promo,
+        )
+
+        if created:
+            promo.like_count = django.db.models.F('like_count') + 1
+            promo.save(update_fields=['like_count'])
+
+        return rest_framework.response.Response(
+            {'status': 'ok'},
+            status=rest_framework.status.HTTP_200_OK,
+        )
+
+    def delete(self, request, id):
+        """Remove a like from the promo code."""
+        promo = self.get_promo_object(id)
+
+        # Idempotency: if the like doesn't exist,
+        # do nothing and still return 200 OK.
+        like_instance = user.models.PromoLike.objects.filter(
+            user=request.user,
+            promo=promo,
+        ).first()
+
+        if like_instance:
+            like_instance.delete()
+            promo.like_count = django.db.models.F('like_count') - 1
+            promo.save(update_fields=['like_count'])
+
+        return rest_framework.response.Response(
+            {'status': 'ok'},
+            status=rest_framework.status.HTTP_200_OK,
+        )

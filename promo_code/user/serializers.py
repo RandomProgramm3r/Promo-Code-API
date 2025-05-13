@@ -342,7 +342,10 @@ class PromoFeedSerializer(rest_framework.serializers.ModelSerializer):
     active = rest_framework.serializers.BooleanField(source='is_active')
     is_activated_by_user = rest_framework.serializers.SerializerMethodField()
     is_liked_by_user = rest_framework.serializers.SerializerMethodField()
-    like_count = rest_framework.serializers.SerializerMethodField()
+    like_count = rest_framework.serializers.IntegerField(
+        source='get_like_count',
+        read_only=True,
+    )
     comment_count = rest_framework.serializers.SerializerMethodField()
 
     class Meta:
@@ -365,10 +368,6 @@ class PromoFeedSerializer(rest_framework.serializers.ModelSerializer):
     def get_is_activated_by_user(self, obj) -> bool:
         # TODO:
         return False
-
-    def get_like_count(self, obj) -> int:
-        # TODO:
-        return 0
 
     def get_is_liked_by_user(self, obj) -> bool:
         # TODO:
@@ -403,7 +402,10 @@ class UserPromoDetailSerializer(rest_framework.serializers.ModelSerializer):
         read_only=True,
     )
     is_activated_by_user = rest_framework.serializers.SerializerMethodField()
-    like_count = rest_framework.serializers.SerializerMethodField()
+    like_count = rest_framework.serializers.IntegerField(
+        source='get_like_count',
+        read_only=True,
+    )
     is_liked_by_user = rest_framework.serializers.SerializerMethodField()
     comment_count = rest_framework.serializers.SerializerMethodField()
 
@@ -423,15 +425,20 @@ class UserPromoDetailSerializer(rest_framework.serializers.ModelSerializer):
         )
         read_only_fields = fields
 
-    def get_is_activated_by_user(self, obj) -> bool:
-        # TODO:
+    def get_is_liked_by_user(self, obj: business.models.Promo) -> bool:
+        request = self.context.get('request')
+        if (
+            request
+            and hasattr(request, 'user')
+            and request.user.is_authenticated
+        ):
+            return user.models.PromoLike.objects.filter(
+                promo=obj,
+                user=request.user,
+            ).exists()
         return False
 
-    def get_like_count(self, obj) -> int:
-        # TODO:
-        return 0
-
-    def get_is_liked_by_user(self, obj) -> bool:
+    def get_is_activated_by_user(self, obj) -> bool:
         # TODO:
         return False
 
