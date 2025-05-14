@@ -82,7 +82,7 @@ class TestUserPromoDetail(user.tests.user.base.BaseUserTestCase):
         self.client.credentials(HTTP_AUTHORIZATION='Bearer ' + self.user_token)
 
     def test_get_promo_matching_target(self):
-        url = self.promo_detail_url(self.promo_sg_id)
+        url = self.get_user_promo_detail_url(self.promo_sg_id)
         response = self.client.get(url)
         self.assertEqual(
             response.status_code,
@@ -94,7 +94,7 @@ class TestUserPromoDetail(user.tests.user.base.BaseUserTestCase):
         )
 
     def test_get_promo_non_matching_target(self):
-        url = self.promo_detail_url(self.promo_kz_id)
+        url = self.get_user_promo_detail_url(self.promo_kz_id)
         response = self.client.get(url)
         self.assertEqual(
             response.status_code,
@@ -118,7 +118,7 @@ class TestUserPromoDetail(user.tests.user.base.BaseUserTestCase):
     )
     def test_user_promo_detail(self, promo_attr, forbidden_field):
         promo_id = getattr(self, promo_attr)
-        url = self.promo_detail_url(promo_id)
+        url = self.get_user_promo_detail_url(promo_id)
         response = self.client.get(url, format='json')
         self.assertEqual(
             response.status_code,
@@ -132,7 +132,7 @@ class TestUserPromoDetail(user.tests.user.base.BaseUserTestCase):
 
     def test_get_promo_invalid_token(self):
         self.client.credentials(HTTP_AUTHORIZATION='Bearer invalid.jwt.token')
-        url = self.promo_detail_url(self.promo_kz_id)
+        url = self.get_user_promo_detail_url(self.promo_kz_id)
         response = self.client.get(url)
         self.assertEqual(
             response.status_code,
@@ -141,7 +141,7 @@ class TestUserPromoDetail(user.tests.user.base.BaseUserTestCase):
 
     def test_get_promo_not_found(self):
         random_uuid = uuid.UUID('550e8400-e29b-41d4-a716-446655440000')
-        url = self.promo_detail_url(random_uuid)
+        url = self.get_user_promo_detail_url(random_uuid)
         response = self.client.get(url)
         self.assertEqual(
             response.status_code,

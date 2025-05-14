@@ -69,20 +69,28 @@ class BaseUserTestCase(rest_framework.test.APITestCase):
         business.models.Promo.objects.all().delete()
         business.models.PromoCode.objects.all().delete()
         user.models.User.objects.all().delete()
+        user.models.PromoLike.objects.all().delete()
         tb_models.BlacklistedToken.objects.all().delete()
         tb_models.OutstandingToken.objects.all().delete()
         super().tearDown()
 
     @classmethod
-    def promo_detail_url(cls, promo_id):
+    def get_business_promo_detail_url(cls, promo_id):
+        return django.urls.reverse(
+            'api-business:promo-detail',
+            kwargs={'id': promo_id},
+        )
+
+    @classmethod
+    def get_user_promo_detail_url(cls, promo_id):
         return django.urls.reverse(
             'api-user:user-promo-detail',
             kwargs={'id': promo_id},
         )
 
     @classmethod
-    def get_promo_business_detail_url(cls, promo_id):
+    def get_user_promo_like_url(cls, promo_id):
         return django.urls.reverse(
-            'api-business:promo-detail',
+            'api-user:user-promo-like',
             kwargs={'id': promo_id},
         )
