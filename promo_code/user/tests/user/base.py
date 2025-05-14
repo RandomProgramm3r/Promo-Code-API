@@ -87,3 +87,10 @@ class BaseUserTestCase(rest_framework.test.APITestCase):
             'api-user:user-promo-detail',
             kwargs={'id': promo_id},
         )
+
+    @classmethod
+    def get_user_promo_like_url(cls, promo_id):
+        return django.urls.reverse(
+            'api-user:user-promo-like',
+            kwargs={'id': promo_id},
+        )
