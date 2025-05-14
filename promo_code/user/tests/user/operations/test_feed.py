@@ -654,7 +654,7 @@ class TestUserPromoFeed(user.tests.user.base.BaseUserTestCase):
         self.client.credentials(
             HTTP_AUTHORIZATION='Bearer ' + self.company2_token,
         )
-        url = self.get_promo_business_detail_url(self.promo11_id)
+        url = self.get_business_promo_detail_url(self.promo11_id)
         patch_data = {'active_until': '2024-08-10'}
         response = self.client.patch(url, patch_data, format='json')
         self.assertEqual(
