@@ -414,6 +414,10 @@ class PromoReadOnlySerializer(rest_framework.serializers.ModelSerializer):
         source='get_used_codes_count',
         read_only=True,
     )
+    comment_count = rest_framework.serializers.IntegerField(
+        source='get_comment_count',
+        read_only=True,
+    )
     active = rest_framework.serializers.BooleanField(
         source='is_active',
         read_only=True,
@@ -435,6 +439,7 @@ class PromoReadOnlySerializer(rest_framework.serializers.ModelSerializer):
             'promo_common',
             'promo_unique',
             'like_count',
+            'comment_count',
             'used_count',
             'active',
         )
@@ -479,6 +484,10 @@ class PromoDetailSerializer(rest_framework.serializers.ModelSerializer):
         source='get_like_count',
         read_only=True,
     )
+    comment_count = rest_framework.serializers.IntegerField(
+        source='get_comment_count',
+        read_only=True,
+    )
     used_count = rest_framework.serializers.IntegerField(
         source='get_used_codes_count',
         read_only=True,
@@ -504,6 +513,7 @@ class PromoDetailSerializer(rest_framework.serializers.ModelSerializer):
             'company_name',
             'active',
             'like_count',
+            'comment_count',
             'used_count',
         )
 

@@ -42,4 +42,14 @@ urlpatterns = [
         user.views.UserPromoLikeView.as_view(),
         name='user-promo-like',
     ),
+    django.urls.path(
+        'promo/<uuid:promo_id>/comments',
+        user.views.PromoCommentListCreateView.as_view(),
+        name='user-promo-comment-list-create',
+    ),
+    django.urls.path(
+        'promo/<uuid:promo_id>/comments/<uuid:comment_id>',
+        user.views.PromoCommentDetailView.as_view(),
+        name='user-promo-comment-detail',
+    ),
 ]

@@ -341,12 +341,15 @@ class PromoFeedSerializer(rest_framework.serializers.ModelSerializer):
     company_name = rest_framework.serializers.CharField(source='company.name')
     active = rest_framework.serializers.BooleanField(source='is_active')
     is_activated_by_user = rest_framework.serializers.SerializerMethodField()
-    is_liked_by_user = rest_framework.serializers.SerializerMethodField()
     like_count = rest_framework.serializers.IntegerField(
         source='get_like_count',
         read_only=True,
     )
-    comment_count = rest_framework.serializers.SerializerMethodField()
+    comment_count = rest_framework.serializers.IntegerField(
+        source='get_comment_count',
+        read_only=True,
+    )
+    is_liked_by_user = rest_framework.serializers.SerializerMethodField()
 
     class Meta:
         model = business.models.Promo
@@ -365,17 +368,22 @@ class PromoFeedSerializer(rest_framework.serializers.ModelSerializer):
 
         read_only_fields = fields
 
+    def get_is_liked_by_user(self, obj: business.models.Promo) -> bool:
+        request = self.context.get('request')
+        if (
+            request
+            and hasattr(request, 'user')
+            and request.user.is_authenticated
+        ):
+            return user.models.PromoLike.objects.filter(
+                promo=obj,
+                user=request.user,
+            ).exists()
+        return False
+
     def get_is_activated_by_user(self, obj) -> bool:
         # TODO:
         return False
-
-    def get_is_liked_by_user(self, obj) -> bool:
-        # TODO:
-        return False
-
-    def get_comment_count(self, obj) -> int:
-        # TODO:
-        return 0
 
 
 class UserPromoDetailSerializer(rest_framework.serializers.ModelSerializer):
@@ -406,8 +414,11 @@ class UserPromoDetailSerializer(rest_framework.serializers.ModelSerializer):
         source='get_like_count',
         read_only=True,
     )
+    comment_count = rest_framework.serializers.IntegerField(
+        source='get_comment_count',
+        read_only=True,
+    )
     is_liked_by_user = rest_framework.serializers.SerializerMethodField()
-    comment_count = rest_framework.serializers.SerializerMethodField()
 
     class Meta:
         model = business.models.Promo
@@ -420,8 +431,8 @@ class UserPromoDetailSerializer(rest_framework.serializers.ModelSerializer):
             'active',
             'is_activated_by_user',
             'like_count',
-            'is_liked_by_user',
             'comment_count',
+            'is_liked_by_user',
         )
         read_only_fields = fields
 
@@ -442,6 +453,64 @@ class UserPromoDetailSerializer(rest_framework.serializers.ModelSerializer):
         # TODO:
         return False
 
-    def get_comment_count(self, obj) -> int:
-        # TODO:
-        return 0
+
+class UserAuthorSerializer(rest_framework.serializers.ModelSerializer):
+    name = rest_framework.serializers.CharField(
+        read_only=True,
+        min_length=1,
+        max_length=100,
+    )
+    surname = rest_framework.serializers.CharField(
+        read_only=True,
+        min_length=1,
+        max_length=120,
+    )
+    avatar_url = rest_framework.serializers.URLField(
+        read_only=True,
+        max_length=350,
+        allow_null=True,
+    )
+
+    class Meta:
+        model = user.models.User
+        fields = ('name', 'surname', 'avatar_url')
+
+
+class CommentSerializer(rest_framework.serializers.ModelSerializer):
+    id = rest_framework.serializers.UUIDField(read_only=True)
+    text = rest_framework.serializers.CharField(
+        min_length=user.constants.COMMENT_TEXT_MIN_LENGTH,
+        max_length=user.constants.COMMENT_TEXT_MAX_LENGTH,
+    )
+    date = rest_framework.serializers.DateTimeField(
+        source='created_at',
+        read_only=True,
+        format='%Y-%m-%dT%H:%M:%S%z',
+    )
+    author = UserAuthorSerializer(read_only=True)
+
+    class Meta:
+        model = user.models.PromoComment
+        fields = ('id', 'text', 'date', 'author')
+
+
+class CommentCreateSerializer(rest_framework.serializers.ModelSerializer):
+    text = rest_framework.serializers.CharField(
+        min_length=user.constants.COMMENT_TEXT_MIN_LENGTH,
+        max_length=user.constants.COMMENT_TEXT_MAX_LENGTH,
+    )
+
+    class Meta:
+        model = user.models.PromoComment
+        fields = ('text',)
+
+
+class CommentUpdateSerializer(rest_framework.serializers.ModelSerializer):
+    text = rest_framework.serializers.CharField(
+        min_length=user.constants.COMMENT_TEXT_MIN_LENGTH,
+        max_length=user.constants.COMMENT_TEXT_MAX_LENGTH,
+    )
+
+    class Meta:
+        model = user.models.PromoComment
+        fields = ('text',)

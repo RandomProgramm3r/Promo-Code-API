@@ -114,3 +114,37 @@ class PromoLike(django.db.models.Model):
 
     def __str__(self):
         return f'{self.user} likes {self.promo}'
+
+
+class PromoComment(django.db.models.Model):
+    id = django.db.models.UUIDField(
+        'UUID',
+        primary_key=True,
+        default=uuid.uuid4,
+        editable=False,
+    )
+    promo = django.db.models.ForeignKey(
+        business.models.Promo,
+        on_delete=django.db.models.CASCADE,
+        related_name='comments',
+    )
+    author = django.db.models.ForeignKey(
+        User,
+        on_delete=django.db.models.CASCADE,
+        related_name='comments',
+    )
+    text = django.db.models.TextField(
+        max_length=user.constants.COMMENT_TEXT_MAX_LENGTH,
+    )
+
+    created_at = django.db.models.DateTimeField(
+        default=django.utils.timezone.now,
+        editable=False,
+    )
+    updated_at = django.db.models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'Comment by {self.author.email} on promo {self.promo.id}'
