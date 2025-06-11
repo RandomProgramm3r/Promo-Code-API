@@ -1,6 +1,7 @@
 import django.db.models
 import django.shortcuts
 import django.utils.timezone
+import rest_framework.exceptions
 import rest_framework.generics
 import rest_framework.permissions
 import rest_framework.response
@@ -13,6 +14,7 @@ import business.constants
 import business.models
 import user.models
 import user.pagination
+import user.permissions
 import user.serializers
 
 
@@ -88,6 +90,8 @@ class UserPromoDetailView(rest_framework.generics.RetrieveAPIView):
             'active_until',
             'mode',
             'used_count',
+            'like_count',
+            'comment_count',
         )
     )
 
@@ -271,6 +275,117 @@ class UserPromoLikeView(rest_framework.views.APIView):
             like_instance.delete()
             promo.like_count = django.db.models.F('like_count') - 1
             promo.save(update_fields=['like_count'])
+
+        return rest_framework.response.Response(
+            {'status': 'ok'},
+            status=rest_framework.status.HTTP_200_OK,
+        )
+
+
+class PromoCommentListCreateView(rest_framework.generics.ListCreateAPIView):
+    permission_classes = [rest_framework.permissions.IsAuthenticated]
+
+    pagination_class = user.pagination.UserFeedPagination
+
+    def get_serializer_class(self):
+        if self.request.method == 'POST':
+            return user.serializers.CommentCreateSerializer
+        return user.serializers.CommentSerializer
+
+    def get_queryset(self):
+        promo_id = self.kwargs.get('promo_id')
+        try:
+            promo = business.models.Promo.objects.get(pk=promo_id)
+        except business.models.Promo.DoesNotExist:
+            raise rest_framework.exceptions.NotFound(detail='Promo not found.')
+
+        return user.models.PromoComment.objects.filter(
+            promo=promo,
+        ).select_related('author')
+
+    def perform_create(self, serializer):
+        promo_id = self.kwargs.get('promo_id')
+        try:
+            promo = business.models.Promo.objects.get(pk=promo_id)
+        except business.models.Promo.DoesNotExist:
+            raise rest_framework.exceptions.ValidationError(
+                {'promo_id': 'Promo not found.'},
+            )
+
+        serializer.save(author=self.request.user, promo=promo)
+        promo.comment_count = django.db.models.F('comment_count') + 1
+        promo.save(update_fields=['comment_count'])
+
+    def create(self, request, *args, **kwargs):
+        create_serializer = self.get_serializer(data=request.data)
+        create_serializer.is_valid(raise_exception=True)
+        self.perform_create(create_serializer)
+        response_serializer = user.serializers.CommentSerializer(
+            create_serializer.instance,
+        )
+        headers = self.get_success_headers(response_serializer.data)
+        return rest_framework.response.Response(
+            response_serializer.data,
+            status=rest_framework.status.HTTP_201_CREATED,
+            headers=headers,
+        )
+
+    def list(self, request, *args, **kwargs):
+        query_serializer = user.serializers.UserFeedQuerySerializer(
+            data=request.query_params,
+        )
+        query_serializer.is_valid(raise_exception=True)
+
+        return super().list(request, *args, **kwargs)
+
+
+class PromoCommentDetailView(
+    rest_framework.generics.RetrieveUpdateDestroyAPIView,
+):
+    permission_classes = [
+        rest_framework.permissions.IsAuthenticated,
+        user.permissions.IsOwnerOrReadOnly,
+    ]
+    lookup_url_kwarg = 'comment_id'
+
+    http_method_names = ['get', 'put', 'delete', 'options', 'head']
+
+    def get_serializer_class(self):
+        if self.request.method == 'PUT':
+            return user.serializers.CommentUpdateSerializer
+        return user.serializers.CommentSerializer
+
+    def get_queryset(self):
+        promo_id = self.kwargs.get('promo_id')
+        try:
+            promo = business.models.Promo.objects.get(pk=promo_id)
+        except business.models.Promo.DoesNotExist:
+            raise rest_framework.exceptions.NotFound(detail='Promo not found.')
+        return user.models.PromoComment.objects.filter(
+            promo=promo,
+        ).select_related('author')
+
+    def update(self, request, *args, **kwargs):
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+        update_serializer = self.get_serializer(
+            instance,
+            data=request.data,
+            partial=partial,
+        )
+        update_serializer.is_valid(raise_exception=True)
+        self.perform_update(update_serializer)
+
+        response_serializer = user.serializers.CommentSerializer(instance)
+        return rest_framework.response.Response(response_serializer.data)
+
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        self.perform_destroy(instance)
+
+        promo = instance.promo
+        promo.comment_count = django.db.models.F('comment_count') - 1
+        promo.save(update_fields=['comment_count'])
 
         return rest_framework.response.Response(
             {'status': 'ok'},
