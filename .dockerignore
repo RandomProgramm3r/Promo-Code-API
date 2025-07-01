@@ -1,17 +1,29 @@
-.dockerignore
-Dockerfile
-README.md
-
-*.pyc
-*.pyo
-*.pyd
-__pycache__
-
+# Virtual Environments
+venv/
 env/
 .venv/
-.env
-.env.example
-.venv/
+.env/
 
-.git
+# Python cache
+__pycache__/
+*.pyc
+
+# Tooling cache & reports
+.ruff_cache/
+.coverage
+.coverage.*
+
+# Version Control
+.git/
 .gitignore
+
+# IDE and editor directories
+.vscode/
+.idea/
+
+# Requirements files not needed in production
+requirements/dev.txt
+
+# Log files
+*.log
+*.log.*
