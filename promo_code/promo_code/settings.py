@@ -141,6 +141,21 @@ DATABASES = {
     },
 }
 
+CACHES = {
+    'default': {
+        'BACKEND': 'django_redis.cache.RedisCache',
+        'LOCATION': os.getenv('REDIS_URL', 'redis://127.0.0.1:6379/0'),
+        'OPTIONS': {
+            'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+        },
+    },
+}
+
+ANTIFRAUD_ADDRESS = f'{os.getenv("ANTIFRAUD_ADDRESS")}'
+ANTIFRAUD_VALIDATE_URL = f'{ANTIFRAUD_ADDRESS}/api/validate'
+ANTIFRAUD_UPDATE_USER_VERDICT_URL = (
+    f'{ANTIFRAUD_ADDRESS}/internal/update_user_verdict'
+)
 
 AUTH_PASSWORD_VALIDATORS = [
     {

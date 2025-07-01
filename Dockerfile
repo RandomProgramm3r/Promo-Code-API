@@ -7,10 +7,12 @@ ENV PYTHONBUFFERED=1 \
 
 WORKDIR /usr/src/app
 
-COPY . .
+COPY requirements/prod.txt ./requirements.txt
 
 RUN pip install --upgrade pip && \
-    pip install -r requirements/prod.txt
+    pip install --no-cache-dir -r requirements.txt
+
+COPY . .
 
 CMD ["sh", "-c", "cd /usr/src/app/promo_code && python manage.py migrate --noinput && gunicorn promo_code.wsgi:application --bind ${SERVER_ADDRESS}"]
 
