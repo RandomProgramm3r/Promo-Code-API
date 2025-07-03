@@ -46,13 +46,17 @@ class AntiFraudService:
             )
             if timeout_seconds:
                 django.core.cache.cache.set(
-                    cache_key, verdict, timeout=timeout_seconds,
+                    cache_key,
+                    verdict,
+                    timeout=timeout_seconds,
                 )
 
         return verdict
 
     def _fetch_from_service(
-        self, user_email: str, promo_id: str,
+        self,
+        user_email: str,
+        promo_id: str,
     ) -> typing.Dict:
         """
         Performs the actual HTTP request with a retry mechanism.
@@ -81,7 +85,8 @@ class AntiFraudService:
         cache_until_str: typing.Optional[str],
     ) -> typing.Optional[int]:
         """
-        Safely parses an ISO format date string and returns a cache TTL in seconds.
+        Safely parses an ISO format date string
+        and returns a cache TTL in seconds.
         """
         if not cache_until_str:
             return None
