@@ -42,6 +42,7 @@ class PromoValidator:
                     'max_count': self.instance.max_count,
                     'active_from': self.instance.active_from,
                     'active_until': self.instance.active_until,
+                    'used_count': self.instance.used_count,
                     'target': self.instance.target
                     if self.instance.target
                     else {},
@@ -56,6 +57,7 @@ class PromoValidator:
         promo_common = self.full_data.get('promo_common')
         promo_unique = self.full_data.get('promo_unique')
         max_count = self.full_data.get('max_count')
+        used_count = self.full_data.get('used_count')
 
         if mode not in [
             business.constants.PROMO_MODE_COMMON,
@@ -63,6 +65,11 @@ class PromoValidator:
         ]:
             raise rest_framework.exceptions.ValidationError(
                 {'mode': 'Invalid mode.'},
+            )
+
+        if used_count and used_count > max_count:
+            raise rest_framework.exceptions.ValidationError(
+                {'mode': 'Invalid max_count.'},
             )
 
         if mode == business.constants.PROMO_MODE_COMMON:

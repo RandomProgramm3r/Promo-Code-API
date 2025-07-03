@@ -148,3 +148,29 @@ class PromoComment(django.db.models.Model):
 
     def __str__(self):
         return f'Comment by {self.author.email} on promo {self.promo.id}'
+
+
+class PromoActivationHistory(django.db.models.Model):
+    id = django.db.models.UUIDField(
+        'UUID',
+        primary_key=True,
+        default=uuid.uuid4,
+        editable=False,
+    )
+    user = django.db.models.ForeignKey(
+        User,
+        on_delete=django.db.models.CASCADE,
+        related_name='promo_activations',
+    )
+    promo = django.db.models.ForeignKey(
+        business.models.Promo,
+        on_delete=django.db.models.CASCADE,
+        related_name='activations_history',
+    )
+    activated_at = django.db.models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-activated_at']
+
+    def __str__(self):
+        return f'{self.user} activated {self.promo.id} at {self.activated_at}'
