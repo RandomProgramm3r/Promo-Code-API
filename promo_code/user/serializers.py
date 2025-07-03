@@ -449,9 +449,22 @@ class UserPromoDetailSerializer(rest_framework.serializers.ModelSerializer):
             ).exists()
         return False
 
-    def get_is_activated_by_user(self, obj) -> bool:
-        # TODO:
-        return False
+    def get_is_activated_by_user(self, obj: business.models.Promo) -> bool:
+        """
+        Checks whether the current user has activated this promo code.
+        """
+        request = self.context.get('request')
+        if not (
+            request
+            and hasattr(request, 'user')
+            and request.user.is_authenticated
+        ):
+            return False
+
+        return user.models.PromoActivationHistory.objects.filter(
+            promo=obj,
+            user=request.user,
+        ).exists()
 
 
 class UserAuthorSerializer(rest_framework.serializers.ModelSerializer):
@@ -514,3 +527,11 @@ class CommentUpdateSerializer(rest_framework.serializers.ModelSerializer):
     class Meta:
         model = user.models.PromoComment
         fields = ('text',)
+
+
+class PromoActivationSerializer(rest_framework.serializers.Serializer):
+    """
+    Serializer for the response upon successful activation.
+    """
+
+    promo = rest_framework.serializers.CharField()

@@ -52,4 +52,14 @@ urlpatterns = [
         user.views.PromoCommentDetailView.as_view(),
         name='user-promo-comment-detail',
     ),
+    django.urls.path(
+        'promo/<uuid:id>/activate',
+        user.views.PromoActivateView.as_view(),
+        name='user-promo-activate',
+    ),
+    django.urls.path(
+        'promo/history',
+        user.views.PromoHistoryView.as_view(),
+        name='user-promo-history',
+    ),
 ]
