@@ -1,4 +1,7 @@
+import django.conf
+import django.core.cache
 import django.urls
+import django_redis
 import rest_framework.test
 import rest_framework_simplejwt.token_blacklist.models as tb_models
 
@@ -15,12 +18,20 @@ class BaseUserTestCase(rest_framework.test.APITestCase):
         cls.user_signin_url = django.urls.reverse('api-user:user-sign-in')
         cls.user_profile_url = django.urls.reverse('api-user:user-profile')
         cls.user_feed_url = django.urls.reverse('api-user:user-feed')
-
+        cls.user_promo_history_url = django.urls.reverse(
+            'api-user:user-promo-history',
+        )
         cls.company_signin_url = django.urls.reverse(
             'api-business:company-sign-in',
         )
         cls.promo_list_create_url = django.urls.reverse(
             'api-business:promo-list-create',
+        )
+        cls.antifraud_update_user_verdict_url = (
+            django.conf.settings.ANTIFRAUD_UPDATE_USER_VERDICT_URL
+        )
+        cls.antifraud_set_delay_url = (
+            django.conf.settings.ANTIFRAUD_SET_DELAY_URL
         )
 
         company1_data = {
@@ -68,11 +79,12 @@ class BaseUserTestCase(rest_framework.test.APITestCase):
         business.models.Company.objects.all().delete()
         business.models.Promo.objects.all().delete()
         business.models.PromoCode.objects.all().delete()
+        user.models.PromoActivationHistory.objects.all().delete()
         user.models.PromoComment.objects.all().delete()
         user.models.PromoLike.objects.all().delete()
         user.models.User.objects.all().delete()
         tb_models.BlacklistedToken.objects.all().delete()
-        tb_models.OutstandingToken.objects.all().delete()
+        django_redis.get_redis_connection('default').flushall()
         super().tearDown()
 
     @classmethod
@@ -86,6 +98,13 @@ class BaseUserTestCase(rest_framework.test.APITestCase):
     def get_user_promo_detail_url(cls, promo_id):
         return django.urls.reverse(
             'api-user:user-promo-detail',
+            kwargs={'id': promo_id},
+        )
+
+    @classmethod
+    def get_user_promo_activate_url(cls, promo_id):
+        return django.urls.reverse(
+            'api-user:user-promo-activate',
             kwargs={'id': promo_id},
         )
 
