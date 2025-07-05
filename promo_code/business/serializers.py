@@ -538,3 +538,17 @@ class PromoDetailSerializer(rest_framework.serializers.ModelSerializer):
             instance=self.instance,
         )
         return validator.validate()
+
+
+class CountryStatSerializer(rest_framework.serializers.Serializer):
+    """Serializer for activation statistics by country."""
+
+    country = rest_framework.serializers.CharField()
+    activations_count = rest_framework.serializers.IntegerField()
+
+
+class PromoStatSerializer(rest_framework.serializers.Serializer):
+    """Serializer for overall promo code statistics."""
+
+    activations_count = rest_framework.serializers.IntegerField()
+    countries = CountryStatSerializer(many=True)

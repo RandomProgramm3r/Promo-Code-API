@@ -84,6 +84,7 @@ class BaseUserTestCase(rest_framework.test.APITestCase):
         user.models.PromoLike.objects.all().delete()
         user.models.User.objects.all().delete()
         tb_models.BlacklistedToken.objects.all().delete()
+        tb_models.OutstandingToken.objects.all().delete()
         django_redis.get_redis_connection('default').flushall()
         super().tearDown()
 

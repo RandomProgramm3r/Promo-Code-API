@@ -1,10 +1,12 @@
 import re
 
 import django.db.models
+import django.shortcuts
 import rest_framework.generics
 import rest_framework.permissions
 import rest_framework.response
 import rest_framework.status
+import rest_framework.views
 import rest_framework_simplejwt.views
 
 import business.models
@@ -13,6 +15,7 @@ import business.permissions
 import business.serializers
 import business.utils.auth
 import business.utils.tokens
+import user.models
 
 
 class CompanySignUpView(rest_framework.generics.CreateAPIView):
@@ -153,3 +156,60 @@ class CompanyPromoDetailView(rest_framework.generics.RetrieveUpdateAPIView):
     # Use an enriched base queryset without pre-filtering by company,
     # so that ownership mismatches raise 403 Forbidden (not 404 Not Found).
     queryset = business.models.Promo.objects.with_related()
+
+
+class CompanyPromoStatAPIView(rest_framework.views.APIView):
+    """
+    API endpoint for retrieving promo code statistics.
+    """
+
+    permission_classes = [
+        rest_framework.permissions.IsAuthenticated,
+        business.permissions.IsPromoOwner,
+    ]
+
+    def get(self, request, id, *args, **kwargs):
+        promo = django.shortcuts.get_object_or_404(
+            business.models.Promo,
+            id=id,
+        )
+
+        self.check_object_permissions(self.request, promo)
+
+        total_activations = promo.activations_history.count()
+
+        countries_stats = (
+            user.models.PromoActivationHistory.objects.filter(promo=promo)
+            .values(
+                'user__other__country',
+            )
+            .annotate(
+                activations_count=django.db.models.Count('id'),
+            )
+            .order_by(
+                'user__other__country',
+            )
+        )
+
+        countries_data = [
+            {
+                'country': item['user__other__country'],
+                'activations_count': item['activations_count'],
+            }
+            for item in countries_stats
+        ]
+
+        response_data = {
+            'activations_count': total_activations,
+            'countries': countries_data,
+        }
+
+        serializer = business.serializers.PromoStatSerializer(
+            data=response_data,
+        )
+        serializer.is_valid(raise_exception=True)
+
+        return rest_framework.response.Response(
+            serializer.validated_data,
+            status=rest_framework.status.HTTP_200_OK,
+        )

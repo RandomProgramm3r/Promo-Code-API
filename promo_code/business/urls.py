@@ -31,4 +31,9 @@ urlpatterns = [
         business.views.CompanyPromoDetailView.as_view(),
         name='promo-detail',
     ),
+    django.urls.path(
+        'promo/<uuid:id>/stat',
+        business.views.CompanyPromoStatAPIView.as_view(),
+        name='promo-statistics',
+    ),
 ]
