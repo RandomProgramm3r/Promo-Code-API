@@ -2,6 +2,7 @@ import django.urls
 import rest_framework.test
 
 import business.models
+import user.models
 
 
 class BasePromoTestCase(rest_framework.test.APITestCase):
@@ -70,3 +71,4 @@ class BasePromoTestCase(rest_framework.test.APITestCase):
         business.models.Company.objects.all().delete()
         business.models.Promo.objects.all().delete()
         business.models.PromoCode.objects.all().delete()
+        user.models.PromoActivationHistory.objects.all().delete()
