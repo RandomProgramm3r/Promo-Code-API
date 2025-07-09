@@ -1,5 +1,4 @@
 import django.conf
-import django.core.cache
 import django.urls
 import django_redis
 import rest_framework.test
