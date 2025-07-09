@@ -48,6 +48,8 @@ INSTALLED_APPS = [
 
 AUTH_USER_MODEL = 'user.User'
 
+AUTH_INSTANCE_CACHE_TIMEOUT = 3600
+
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'user.authentication.CustomJWTAuthentication',
@@ -194,6 +196,15 @@ AUTH_PASSWORD_VALIDATORS = [
         'NAME': 'promo_code.validators.UppercaseLatinLetterPasswordValidator',
         'OPTIONS': {'min_count': 1},
     },
+]
+
+
+PASSWORD_HASHERS = [
+    'django.contrib.auth.hashers.Argon2PasswordHasher',
+    'django.contrib.auth.hashers.PBKDF2PasswordHasher',
+    'django.contrib.auth.hashers.PBKDF2SHA1PasswordHasher',
+    'django.contrib.auth.hashers.BCryptSHA256PasswordHasher',
+    'django.contrib.auth.hashers.ScryptPasswordHasher',
 ]
 
 

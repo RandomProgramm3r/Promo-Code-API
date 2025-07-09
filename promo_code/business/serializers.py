@@ -12,9 +12,9 @@ import rest_framework_simplejwt.tokens
 
 import business.constants
 import business.models
-import business.utils.auth
 import business.utils.tokens
 import business.validators
+import core.utils.auth
 
 
 class CompanySignUpSerializer(rest_framework.serializers.ModelSerializer):
@@ -36,12 +36,6 @@ class CompanySignUpSerializer(rest_framework.serializers.ModelSerializer):
         required=True,
         min_length=business.constants.COMPANY_EMAIL_MIN_LENGTH,
         max_length=business.constants.COMPANY_EMAIL_MAX_LENGTH,
-        validators=[
-            business.validators.UniqueEmailValidator(
-                'This email address is already registered.',
-                'email_conflict',
-            ),
-        ],
     )
 
     class Meta:
@@ -50,11 +44,20 @@ class CompanySignUpSerializer(rest_framework.serializers.ModelSerializer):
 
     @django.db.transaction.atomic
     def create(self, validated_data):
-        company = business.models.Company.objects.create_company(
-            **validated_data,
-        )
+        try:
+            company = business.models.Company.objects.create_company(
+                **validated_data,
+            )
+        except django.db.IntegrityError:
+            exc = rest_framework.exceptions.APIException(
+                detail={
+                    'email': 'This email address is already registered.',
+                },
+            )
+            exc.status_code = 409
+            raise exc
 
-        return business.utils.auth.bump_company_token_version(company)
+        return core.utils.auth.bump_token_version(company)
 
 
 class CompanySignInSerializer(rest_framework.serializers.Serializer):

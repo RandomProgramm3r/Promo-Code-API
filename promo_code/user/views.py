@@ -13,9 +13,9 @@ import rest_framework_simplejwt.views
 
 import business.constants
 import business.models
+import core.pagination
 import user.antifraud_service
 import user.models
-import user.pagination
 import user.permissions
 import user.serializers
 
@@ -109,7 +109,7 @@ class UserPromoDetailView(rest_framework.generics.RetrieveAPIView):
 class UserFeedView(rest_framework.generics.ListAPIView):
     serializer_class = user.serializers.PromoFeedSerializer
     permission_classes = [rest_framework.permissions.IsAuthenticated]
-    pagination_class = user.pagination.UserFeedPagination
+    pagination_class = core.pagination.CustomLimitOffsetPagination
 
     def get_queryset(self):
         user = self.request.user
@@ -287,7 +287,7 @@ class UserPromoLikeView(rest_framework.views.APIView):
 class PromoCommentListCreateView(rest_framework.generics.ListCreateAPIView):
     permission_classes = [rest_framework.permissions.IsAuthenticated]
 
-    pagination_class = user.pagination.UserFeedPagination
+    pagination_class = core.pagination.CustomLimitOffsetPagination
 
     def get_serializer_class(self):
         if self.request.method == 'POST':
@@ -537,7 +537,7 @@ class PromoHistoryView(rest_framework.generics.ListAPIView):
 
     serializer_class = user.serializers.UserPromoDetailSerializer
     permission_classes = [rest_framework.permissions.IsAuthenticated]
-    pagination_class = user.pagination.UserFeedPagination
+    pagination_class = core.pagination.CustomLimitOffsetPagination
 
     def get_queryset(self):
         user = self.request.user
