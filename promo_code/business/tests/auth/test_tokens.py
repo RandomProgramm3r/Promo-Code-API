@@ -1,5 +1,4 @@
 import rest_framework.status
-import rest_framework.test
 import rest_framework_simplejwt.tokens
 
 import business.models

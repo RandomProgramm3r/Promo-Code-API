@@ -10,11 +10,11 @@ import rest_framework.views
 import rest_framework_simplejwt.views
 
 import business.models
-import business.pagination
 import business.permissions
 import business.serializers
-import business.utils.auth
 import business.utils.tokens
+import core.pagination
+import core.utils.auth
 import user.models
 
 
@@ -49,7 +49,7 @@ class CompanySignInView(rest_framework.generics.GenericAPIView):
         serializer.is_valid(raise_exception=True)
 
         company = serializer.validated_data['company']
-        company = business.utils.auth.bump_company_token_version(company)
+        company = core.utils.auth.bump_token_version(company)
 
         return rest_framework.response.Response(
             business.utils.tokens.generate_company_tokens(company),
@@ -75,7 +75,7 @@ class CompanyPromoListCreateView(rest_framework.generics.ListCreateAPIView):
         business.permissions.IsCompanyUser,
     ]
     # Pagination is only needed for GET (listing)
-    pagination_class = business.pagination.CustomLimitOffsetPagination
+    pagination_class = core.pagination.CustomLimitOffsetPagination
 
     _validated_query_params = {}
 

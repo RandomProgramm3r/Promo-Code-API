@@ -1,7 +1,6 @@
 import django.contrib.auth.password_validation
-import django.core.exceptions
-import django.core.validators
-import django.db.models
+import django.core.cache
+import django.db.transaction
 import pycountry
 import rest_framework.exceptions
 import rest_framework.serializers
@@ -11,9 +10,9 @@ import rest_framework_simplejwt.tokens
 
 import business.constants
 import business.models
+import core.utils.auth
 import user.constants
 import user.models
-import user.validators
 
 
 class OtherFieldSerializer(rest_framework.serializers.Serializer):
@@ -64,19 +63,11 @@ class SignUpSerializer(rest_framework.serializers.ModelSerializer):
         required=True,
         min_length=user.constants.EMAIL_MIN_LENGTH,
         max_length=user.constants.EMAIL_MAX_LENGTH,
-        validators=[
-            user.validators.UniqueEmailValidator(
-                'This email address is already registered.',
-                'email_conflict',
-            ),
-        ],
     )
-    avatar_url = rest_framework.serializers.CharField(
+    avatar_url = rest_framework.serializers.URLField(
         required=False,
         max_length=user.constants.AVATAR_URL_MAX_LENGTH,
-        validators=[
-            django.core.validators.URLValidator(schemes=['http', 'https']),
-        ],
+        allow_null=True,
     )
     other = OtherFieldSerializer(required=True)
 
@@ -91,21 +82,20 @@ class SignUpSerializer(rest_framework.serializers.ModelSerializer):
             'password',
         )
 
+    @django.db.transaction.atomic
     def create(self, validated_data):
         try:
-            user_ = user.models.User.objects.create_user(
-                email=validated_data['email'],
-                name=validated_data['name'],
-                surname=validated_data['surname'],
-                avatar_url=validated_data.get('avatar_url'),
-                other=validated_data['other'],
-                password=validated_data['password'],
+            user_ = user.models.User.objects.create_user(**validated_data)
+        except django.db.IntegrityError:
+            exc = rest_framework.exceptions.APIException(
+                detail={
+                    'email': 'This email address is already registered.',
+                },
             )
-            user_.token_version += 1
-            user_.save()
-            return user_
-        except django.core.exceptions.ValidationError as e:
-            raise rest_framework.serializers.ValidationError(e.messages)
+            exc.status_code = 409
+            raise exc
+
+        return core.utils.auth.bump_token_version(user_)
 
 
 class SignInSerializer(
@@ -120,14 +110,18 @@ class SignInSerializer(
     def validate(self, attrs):
         user = self.authenticate_user(attrs)
 
-        user.token_version = django.db.models.F('token_version') + 1
-        user.save(update_fields=['token_version'])
+        user = core.utils.auth.bump_token_version(user)
+
+        self.user = user
 
         data = super().validate(attrs)
 
-        refresh = rest_framework_simplejwt.tokens.RefreshToken(data['refresh'])
-
-        self.blacklist_other_tokens(user, refresh['jti'])
+        refresh = data.get('refresh')
+        if refresh:
+            refresh_token = rest_framework_simplejwt.tokens.RefreshToken(
+                refresh,
+            )
+            self.blacklist_other_tokens(user, refresh_token['jti'])
 
         return data
 
@@ -187,12 +181,6 @@ class UserProfileSerializer(rest_framework.serializers.ModelSerializer):
         required=False,
         min_length=user.constants.EMAIL_MIN_LENGTH,
         max_length=user.constants.EMAIL_MAX_LENGTH,
-        validators=[
-            user.validators.UniqueEmailValidator(
-                'This email address is already registered.',
-                'email_conflict',
-            ),
-        ],
     )
     password = rest_framework.serializers.CharField(
         write_only=True,
@@ -202,12 +190,10 @@ class UserProfileSerializer(rest_framework.serializers.ModelSerializer):
         min_length=user.constants.PASSWORD_MIN_LENGTH,
         style={'input_type': 'password'},
     )
-    avatar_url = rest_framework.serializers.CharField(
+    avatar_url = rest_framework.serializers.URLField(
         required=False,
         max_length=user.constants.AVATAR_URL_MAX_LENGTH,
-        validators=[
-            django.core.validators.URLValidator(schemes=['http', 'https']),
-        ],
+        allow_null=True,
     )
     other = OtherFieldSerializer(required=False)
 
@@ -233,10 +219,28 @@ class UserProfileSerializer(rest_framework.serializers.ModelSerializer):
         if other_data is not None:
             instance.other = other_data
 
+        if (
+            'email' in validated_data
+            and user.models.User.objects.filter(
+                email=validated_data['email'],
+            )
+            .exclude(id=instance.id)
+            .exists()
+        ):
+            raise rest_framework.exceptions.ValidationError(
+                {'email': 'This email address is already registered.'},
+            )
+
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
 
         instance.save()
+
+        user_type = instance.__class__.__name__.lower()
+        token_version = instance.token_version
+
+        cache_key = f'auth_instance_{user_type}_{instance.id}_v{token_version}'
+        django.core.cache.cache.delete(cache_key)
         return instance
 
     def to_representation(self, instance):
