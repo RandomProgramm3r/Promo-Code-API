@@ -1,5 +1,8 @@
+import rest_framework.exceptions
 import rest_framework.pagination
 import rest_framework.response
+
+import core.serializers
 
 
 class CustomLimitOffsetPagination(
@@ -9,12 +12,13 @@ class CustomLimitOffsetPagination(
     max_limit = 100
 
     def get_limit(self, request):
-        raw_limit = request.query_params.get(self.limit_query_param)
+        serializer = core.serializers.BaseLimitOffsetPaginationSerializer(
+            data=request.query_params,
+        )
+        serializer.is_valid(raise_exception=True)
 
-        if raw_limit is None:
-            return self.default_limit
-
-        limit = int(raw_limit)
+        validated_data = serializer.validated_data
+        limit = validated_data.get('limit', self.default_limit)
 
         # Allow 0, otherwise cut by max_limit
         return 0 if limit == 0 else min(limit, self.max_limit)
