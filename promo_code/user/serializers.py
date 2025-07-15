@@ -1,7 +1,6 @@
 import django.contrib.auth.password_validation
 import django.core.cache
 import django.db.transaction
-import pycountry
 import rest_framework.exceptions
 import rest_framework.serializers
 import rest_framework_simplejwt.serializers
@@ -10,6 +9,7 @@ import rest_framework_simplejwt.tokens
 
 import business.constants
 import business.models
+import core.serializers
 import core.utils.auth
 import user.constants
 import user.models
@@ -21,23 +21,7 @@ class OtherFieldSerializer(rest_framework.serializers.Serializer):
         min_value=user.constants.AGE_MIN,
         max_value=user.constants.AGE_MAX,
     )
-    country = rest_framework.serializers.CharField(
-        required=True,
-        max_length=user.constants.COUNTRY_CODE_LENGTH,
-        min_length=user.constants.COUNTRY_CODE_LENGTH,
-    )
-
-    def validate(self, value):
-        country = value['country']
-
-        try:
-            pycountry.countries.lookup(country.upper())
-        except LookupError:
-            raise rest_framework.serializers.ValidationError(
-                'Invalid ISO 3166-1 alpha-2 country code.',
-            )
-
-        return value
+    country = core.serializers.CountryField(required=True)
 
 
 class SignUpSerializer(rest_framework.serializers.ModelSerializer):
@@ -252,88 +236,39 @@ class UserProfileSerializer(rest_framework.serializers.ModelSerializer):
         return data
 
 
-class UserFeedQuerySerializer(rest_framework.serializers.Serializer):
+class UserFeedQuerySerializer(
+    core.serializers.BaseLimitOffsetPaginationSerializer,
+):
     """
     Serializer for validating query parameters of promo feed requests.
     """
 
-    limit = rest_framework.serializers.CharField(
-        required=False,
-        allow_blank=True,
-    )
-    offset = rest_framework.serializers.CharField(
-        required=False,
-        allow_blank=True,
-    )
     category = rest_framework.serializers.CharField(
         min_length=business.constants.TARGET_CATEGORY_MIN_LENGTH,
         max_length=business.constants.TARGET_CATEGORY_MAX_LENGTH,
         required=False,
-        allow_blank=True,
+        allow_blank=False,
     )
     active = rest_framework.serializers.BooleanField(
         required=False,
-        allow_null=True,
     )
 
-    _allowed_params = None
-
-    def get_allowed_params(self):
-        if self._allowed_params is None:
-            self._allowed_params = set(self.fields.keys())
-        return self._allowed_params
-
     def validate(self, attrs):
-        query_params = self.initial_data
-        allowed_params = self.get_allowed_params()
+        query_params = self.initial_data.keys()
+        allowed_params = self.fields.keys()
+        unexpected_params = set(query_params) - set(allowed_params)
 
-        unexpected_params = set(query_params.keys()) - allowed_params
         if unexpected_params:
-            raise rest_framework.exceptions.ValidationError('Invalid params.')
-
-        field_errors = {}
-
-        attrs = self._validate_int_field('limit', attrs, field_errors)
-        attrs = self._validate_int_field('offset', attrs, field_errors)
-
-        if field_errors:
-            raise rest_framework.exceptions.ValidationError(field_errors)
-
-        return attrs
-
-    def validate_category(self, value):
-        cotegory = self.initial_data.get('category')
-
-        if cotegory is None:
-            return value
-
-        if value == '':
             raise rest_framework.exceptions.ValidationError(
-                'Invalid category format.',
+                f'Invalid parameters: {", ".join(unexpected_params)}',
             )
 
-        return value
-
-    def _validate_int_field(self, field_name, attrs, field_errors):
-        value_str = self.initial_data.get(field_name)
-        if value_str is None:
-            return attrs
-
-        if value_str == '':
-            raise rest_framework.exceptions.ValidationError(
-                f'Invalid {field_name} format.',
-            )
-
-        try:
-            value_int = int(value_str)
-            if value_int < 0:
-                raise rest_framework.exceptions.ValidationError(
-                    f'{field_name.capitalize()} cannot be negative.',
-                )
-            attrs[field_name] = value_int
-        except (ValueError, TypeError):
-            raise rest_framework.exceptions.ValidationError(
-                f'Invalid {field_name} format.',
+        if (
+            'category' in self.initial_data
+            and self.initial_data.get('category') == ''
+        ):
+            raise rest_framework.serializers.ValidationError(
+                {'category': 'This field cannot be blank.'},
             )
 
         return attrs
