@@ -74,10 +74,7 @@ class CompanyPromoListCreateView(rest_framework.generics.ListCreateAPIView):
         rest_framework.permissions.IsAuthenticated,
         business.permissions.IsCompanyUser,
     ]
-    # Pagination is only needed for GET (listing)
     pagination_class = core.pagination.CustomLimitOffsetPagination
-
-    _validated_query_params = {}
 
     def get_serializer_class(self):
         if self.request.method == 'POST':
@@ -85,17 +82,13 @@ class CompanyPromoListCreateView(rest_framework.generics.ListCreateAPIView):
 
         return business.serializers.PromoReadOnlySerializer
 
-    def list(self, request, *args, **kwargs):
+    def get_queryset(self):
         query_serializer = business.serializers.PromoListQuerySerializer(
-            data=request.query_params,
+            data=self.request.query_params,
         )
         query_serializer.is_valid(raise_exception=True)
-        self._validated_query_params = query_serializer.validated_data
+        params = query_serializer.validated_data
 
-        return super().list(request, *args, **kwargs)
-
-    def get_queryset(self):
-        params = self._validated_query_params
         countries = [c.upper() for c in params.get('countries', [])]
         sort_by = params.get('sort_by')
 

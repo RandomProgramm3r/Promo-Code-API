@@ -271,13 +271,12 @@ class PromoDetailSerializer(core.serializers.BasePromoSerializer):
     def update(self, instance, validated_data):
         target_data = validated_data.pop('target', None)
 
-        for attr, value in validated_data.items():
-            setattr(instance, attr, value)
+        instance = super().update(instance, validated_data)
 
         if target_data is not None:
             instance.target = target_data
+            instance.save(update_fields=['target'])
 
-        instance.save()
         return instance
 
 
