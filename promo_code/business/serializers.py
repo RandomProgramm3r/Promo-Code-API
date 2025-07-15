@@ -1,7 +1,6 @@
 import uuid
 
 import django.contrib.auth.password_validation
-import django.core.validators
 import django.db.transaction
 import pycountry
 import rest_framework.exceptions
@@ -13,7 +12,7 @@ import rest_framework_simplejwt.tokens
 import business.constants
 import business.models
 import business.utils.tokens
-import business.validators
+import core.serializers
 import core.utils.auth
 
 
@@ -104,7 +103,7 @@ class CompanyTokenRefreshSerializer(
         )
         company = self.get_active_company_from_token(refresh)
 
-        company = business.utils.auth.bump_company_token_version(company)
+        company = core.utils.auth.bump_token_version(company)
 
         return business.utils.tokens.generate_company_tokens(company)
 
@@ -141,6 +140,62 @@ class CompanyTokenRefreshSerializer(
         return company
 
 
+class CountryField(rest_framework.serializers.CharField):
+    """
+    Custom field for validating country codes according to ISO 3166-1 alpha-2.
+    """
+
+    def __init__(self, **kwargs):
+        kwargs['allow_blank'] = False
+        kwargs['min_length'] = business.constants.TARGET_COUNTRY_CODE_LENGTH
+        kwargs['max_length'] = business.constants.TARGET_COUNTRY_CODE_LENGTH
+        super().__init__(**kwargs)
+
+    def to_internal_value(self, data):
+        code = super().to_internal_value(data)
+        try:
+            pycountry.countries.lookup(code.upper())
+        except LookupError:
+            raise rest_framework.serializers.ValidationError(
+                'Invalid ISO 3166-1 alpha-2 country code.',
+            )
+        return code
+
+
+class MultiCountryField(rest_framework.serializers.ListField):
+    """
+    Custom field for handling multiple country codes,
+    passed either as a comma-separated list or as multiple parameters.
+    """
+
+    def __init__(self, **kwargs):
+        kwargs['child'] = CountryField()
+        kwargs['allow_empty'] = False
+        super().__init__(**kwargs)
+
+    def to_internal_value(self, data):
+        if not data or not isinstance(data, list):
+            raise rest_framework.serializers.ValidationError(
+                'At least one country must be specified.',
+            )
+
+        # (&country=us,fr)
+        if len(data) == 1 and ',' in data[0]:
+            countries_str = data[0]
+            if '' in [s.strip() for s in countries_str.split(',')]:
+                raise rest_framework.serializers.ValidationError(
+                    'Invalid country format.',
+                )
+            data = [country.strip() for country in countries_str.split(',')]
+
+        if any(not item for item in data):
+            raise rest_framework.serializers.ValidationError(
+                'Empty value for country is not allowed.',
+            )
+
+        return super().to_internal_value(data)
+
+
 class TargetSerializer(rest_framework.serializers.Serializer):
     age_from = rest_framework.serializers.IntegerField(
         min_value=business.constants.TARGET_AGE_MIN,
@@ -152,15 +207,13 @@ class TargetSerializer(rest_framework.serializers.Serializer):
         max_value=business.constants.TARGET_AGE_MAX,
         required=False,
     )
-    country = rest_framework.serializers.CharField(
-        max_length=business.constants.TARGET_COUNTRY_CODE_LENGTH,
-        min_length=business.constants.TARGET_COUNTRY_CODE_LENGTH,
-        required=False,
-    )
+    country = CountryField(required=False)
+
     categories = rest_framework.serializers.ListField(
         child=rest_framework.serializers.CharField(
             min_length=business.constants.TARGET_CATEGORY_MIN_LENGTH,
             max_length=business.constants.TARGET_CATEGORY_MAX_LENGTH,
+            allow_blank=False,
         ),
         max_length=business.constants.TARGET_CATEGORY_MAX_ITEMS,
         required=False,
@@ -170,6 +223,7 @@ class TargetSerializer(rest_framework.serializers.Serializer):
     def validate(self, data):
         age_from = data.get('age_from')
         age_until = data.get('age_until')
+
         if (
             age_from is not None
             and age_until is not None
@@ -178,32 +232,23 @@ class TargetSerializer(rest_framework.serializers.Serializer):
             raise rest_framework.serializers.ValidationError(
                 {'age_until': 'Must be greater than or equal to age_from.'},
             )
-
-        country = data.get('country')
-        if country:
-            try:
-                pycountry.countries.lookup(country.strip().upper())
-                data['country'] = country
-            except LookupError:
-                raise rest_framework.serializers.ValidationError(
-                    {'country': 'Invalid ISO 3166-1 alpha-2 country code.'},
-                )
-
         return data
 
 
-class PromoCreateSerializer(rest_framework.serializers.ModelSerializer):
+class BasePromoSerializer(rest_framework.serializers.ModelSerializer):
+    """
+    Base serializer for promo, containing validation and representation logic.
+    """
+
+    image_url = rest_framework.serializers.URLField(
+        required=False,
+        allow_blank=False,
+        max_length=business.constants.PROMO_IMAGE_URL_MAX_LENGTH,
+    )
     description = rest_framework.serializers.CharField(
         min_length=business.constants.PROMO_DESC_MIN_LENGTH,
         max_length=business.constants.PROMO_DESC_MAX_LENGTH,
         required=True,
-    )
-    image_url = rest_framework.serializers.CharField(
-        required=False,
-        max_length=business.constants.PROMO_IMAGE_URL_MAX_LENGTH,
-        validators=[
-            django.core.validators.URLValidator(schemes=['http', 'https']),
-        ],
     )
     target = TargetSerializer(required=True, allow_null=True)
     promo_common = rest_framework.serializers.CharField(
@@ -211,27 +256,23 @@ class PromoCreateSerializer(rest_framework.serializers.ModelSerializer):
         max_length=business.constants.PROMO_COMMON_CODE_MAX_LENGTH,
         required=False,
         allow_null=True,
+        allow_blank=False,
     )
     promo_unique = rest_framework.serializers.ListField(
         child=rest_framework.serializers.CharField(
             min_length=business.constants.PROMO_UNIQUE_CODE_MIN_LENGTH,
             max_length=business.constants.PROMO_UNIQUE_CODE_MAX_LENGTH,
+            allow_blank=False,
         ),
         min_length=business.constants.PROMO_UNIQUE_LIST_MIN_ITEMS,
         max_length=business.constants.PROMO_UNIQUE_LIST_MAX_ITEMS,
         required=False,
         allow_null=True,
     )
-    # headers
-    url = rest_framework.serializers.HyperlinkedIdentityField(
-        view_name='api-business:promo-detail',
-        lookup_field='id',
-    )
 
     class Meta:
         model = business.models.Promo
         fields = (
-            'url',
             'description',
             'image_url',
             'target',
@@ -244,9 +285,145 @@ class PromoCreateSerializer(rest_framework.serializers.ModelSerializer):
         )
 
     def validate(self, data):
-        data = super().validate(data)
-        validator = business.validators.PromoValidator(data=data)
-        return validator.validate()
+        """
+        Main validation method.
+        Determines the mode and calls the corresponding validation method.
+        """
+
+        mode = data.get('mode', getattr(self.instance, 'mode', None))
+
+        if mode == business.constants.PROMO_MODE_COMMON:
+            self._validate_common(data)
+        elif mode == business.constants.PROMO_MODE_UNIQUE:
+            self._validate_unique(data)
+        elif mode is None:
+            raise rest_framework.serializers.ValidationError(
+                {'mode': 'This field is required.'},
+            )
+        else:
+            raise rest_framework.serializers.ValidationError(
+                {'mode': 'Invalid mode.'},
+            )
+
+        return data
+
+    def _validate_common(self, data):
+        """
+        Validations for COMMON promo mode.
+        """
+
+        if 'promo_unique' in data and data['promo_unique'] is not None:
+            raise rest_framework.serializers.ValidationError(
+                {'promo_unique': 'This field is not allowed for COMMON mode.'},
+            )
+
+        if self.instance is None and not data.get('promo_common'):
+            raise rest_framework.serializers.ValidationError(
+                {'promo_common': 'This field is required for COMMON mode.'},
+            )
+
+        new_max_count = data.get('max_count')
+        if self.instance and new_max_count is not None:
+            used_count = self.instance.get_used_codes_count
+            if used_count > new_max_count:
+                raise rest_framework.serializers.ValidationError(
+                    {
+                        'max_count': (
+                            f'max_count ({new_max_count}) cannot be less than '
+                            f'used_count ({used_count}).'
+                        ),
+                    },
+                )
+
+        effective_max_count = (
+            new_max_count
+            if new_max_count is not None
+            else getattr(self.instance, 'max_count', None)
+        )
+
+        min_c = business.constants.PROMO_COMMON_MIN_COUNT
+        max_c = business.constants.PROMO_COMMON_MAX_COUNT
+        if effective_max_count is not None and not (
+            min_c <= effective_max_count <= max_c
+        ):
+            raise rest_framework.serializers.ValidationError(
+                {
+                    'max_count': (
+                        f'Must be between {min_c} and {max_c} for COMMON mode.'
+                    ),
+                },
+            )
+
+    def _validate_unique(self, data):
+        """
+        Validations for UNIQUE promo mode.
+        """
+
+        if 'promo_common' in data and data['promo_common'] is not None:
+            raise rest_framework.serializers.ValidationError(
+                {'promo_common': 'This field is not allowed for UNIQUE mode.'},
+            )
+
+        if self.instance is None and not data.get('promo_unique'):
+            raise rest_framework.serializers.ValidationError(
+                {'promo_unique': 'This field is required for UNIQUE mode.'},
+            )
+
+        effective_max_count = data.get(
+            'max_count',
+            getattr(self.instance, 'max_count', None),
+        )
+
+        if (
+            effective_max_count is not None
+            and effective_max_count
+            != business.constants.PROMO_UNIQUE_MAX_COUNT
+        ):
+            raise rest_framework.serializers.ValidationError(
+                {
+                    'max_count': (
+                        'Must be equal to '
+                        f'{business.constants.PROMO_UNIQUE_MAX_COUNT} '
+                        'for UNIQUE mode.'
+                    ),
+                },
+            )
+
+    def to_representation(self, instance):
+        """
+        Controls the display of fields in the response.
+        """
+
+        data = super().to_representation(instance)
+
+        if not instance.image_url:
+            data.pop('image_url', None)
+
+        if instance.mode == business.constants.PROMO_MODE_UNIQUE:
+            data.pop('promo_common', None)
+            if 'promo_unique' in self.fields and isinstance(
+                self.fields['promo_unique'],
+                rest_framework.serializers.SerializerMethodField,
+            ):
+                data['promo_unique'] = self.get_promo_unique(instance)
+            else:
+                data['promo_unique'] = [
+                    code.code for code in instance.unique_codes.all()
+                ]
+        else:
+            data.pop('promo_unique', None)
+
+        return data
+
+
+class PromoCreateSerializer(BasePromoSerializer):
+    url = rest_framework.serializers.HyperlinkedIdentityField(
+        view_name='api-business:promo-detail',
+        lookup_field='id',
+    )
+
+    class Meta(BasePromoSerializer.Meta):
+        fields = ('url',) + BasePromoSerializer.Meta.fields
 
     def create(self, validated_data):
         target_data = validated_data.pop('target')
@@ -261,224 +438,41 @@ class PromoCreateSerializer(rest_framework.serializers.ModelSerializer):
             **validated_data,
         )
 
-    def to_representation(self, instance):
-        data = super().to_representation(instance)
-        data['target'] = instance.target
 
-        if instance.mode == business.constants.PROMO_MODE_UNIQUE:
-            data['promo_unique'] = [
-                code.code for code in instance.unique_codes.all()
-            ]
-            data.pop('promo_common', None)
-        else:
-            data.pop('promo_unique', None)
-
-        return data
-
-
-class PromoListQuerySerializer(rest_framework.serializers.Serializer):
+class PromoListQuerySerializer(
+    core.serializers.BaseLimitOffsetPaginationSerializer,
+):
     """
-    Serializer for validating query parameters of promo list requests.
+    Validates query parameters for the list of promotions.
     """
 
-    limit = rest_framework.serializers.CharField(
-        required=False,
-        allow_blank=True,
-    )
-    offset = rest_framework.serializers.CharField(
-        required=False,
-        allow_blank=True,
-    )
     sort_by = rest_framework.serializers.ChoiceField(
         choices=['active_from', 'active_until'],
         required=False,
     )
-    country = rest_framework.serializers.CharField(
-        required=False,
-        allow_blank=True,
-    )
-
-    _allowed_params = None
-
-    def get_allowed_params(self):
-        if self._allowed_params is None:
-            self._allowed_params = set(self.fields.keys())
-        return self._allowed_params
+    country = MultiCountryField(required=False)
 
     def validate(self, attrs):
-        query_params = self.initial_data
-        allowed_params = self.get_allowed_params()
+        query_params = self.initial_data.keys()
+        allowed_params = self.fields.keys()
+        unexpected_params = set(query_params) - set(allowed_params)
 
-        unexpected_params = set(query_params.keys()) - allowed_params
         if unexpected_params:
-            raise rest_framework.exceptions.ValidationError('Invalid params.')
+            raise rest_framework.exceptions.ValidationError(
+                f'Invalid parameters: {", ".join(unexpected_params)}',
+            )
 
-        field_errors = {}
-
-        attrs = self._validate_int_field('limit', attrs, field_errors)
-        attrs = self._validate_int_field('offset', attrs, field_errors)
-
-        self._validate_country(query_params, attrs, field_errors)
-
-        if field_errors:
-            raise rest_framework.exceptions.ValidationError(field_errors)
+        if 'country' in attrs:
+            attrs['countries'] = attrs.pop('country')
 
         return attrs
 
-    def _validate_int_field(self, field_name, attrs, field_errors):
-        value_str = self.initial_data.get(field_name)
-        if value_str is None:
-            return attrs
 
-        if value_str == '':
-            raise rest_framework.exceptions.ValidationError(
-                f'Invalid {field_name} format.',
-            )
-
-        try:
-            value_int = int(value_str)
-            if value_int < 0:
-                raise rest_framework.exceptions.ValidationError(
-                    f'{field_name.capitalize()} cannot be negative.',
-                )
-            attrs[field_name] = value_int
-        except (ValueError, TypeError):
-            raise rest_framework.exceptions.ValidationError(
-                f'Invalid {field_name} format.',
-            )
-
-        return attrs
-
-    def _validate_country(self, query_params, attrs, field_errors):
-        countries_raw = query_params.getlist('country', [])
-
-        if '' in countries_raw:
-            raise rest_framework.exceptions.ValidationError(
-                'Invalid country format.',
-            )
-
-        country_codes = []
-        invalid_codes = []
-
-        for country_group in countries_raw:
-            if not country_group.strip():
-                continue
-
-            parts = [part.strip() for part in country_group.split(',')]
-
-            if '' in parts:
-                raise rest_framework.exceptions.ValidationError(
-                    'Invalid country format.',
-                )
-
-            country_codes.extend(parts)
-
-        country_codes_upper = [c.upper() for c in country_codes]
-
-        for code in country_codes_upper:
-            if len(code) != 2:
-                invalid_codes.append(code)
-                continue
-            try:
-                pycountry.countries.lookup(code)
-            except LookupError:
-                invalid_codes.append(code)
-
-        if invalid_codes:
-            field_errors['country'] = (
-                f'Invalid country codes: {", ".join(invalid_codes)}'
-            )
-
-        attrs['countries'] = country_codes
-        attrs.pop('country', None)
-
-
-class PromoReadOnlySerializer(rest_framework.serializers.ModelSerializer):
+class PromoDetailSerializer(BasePromoSerializer):
     promo_id = rest_framework.serializers.UUIDField(
         source='id',
         read_only=True,
     )
-    company_id = rest_framework.serializers.UUIDField(
-        source='company.id',
-        read_only=True,
-    )
-    company_name = rest_framework.serializers.CharField(
-        source='company.name',
-        read_only=True,
-    )
-    target = TargetSerializer()
-
-    promo_unique = rest_framework.serializers.SerializerMethodField()
-    like_count = rest_framework.serializers.IntegerField(
-        source='get_like_count',
-        read_only=True,
-    )
-    used_count = rest_framework.serializers.IntegerField(
-        source='get_used_codes_count',
-        read_only=True,
-    )
-    comment_count = rest_framework.serializers.IntegerField(
-        source='get_comment_count',
-        read_only=True,
-    )
-    active = rest_framework.serializers.BooleanField(
-        source='is_active',
-        read_only=True,
-    )
-
-    class Meta:
-        model = business.models.Promo
-        fields = (
-            'promo_id',
-            'company_id',
-            'company_name',
-            'description',
-            'image_url',
-            'target',
-            'max_count',
-            'active_from',
-            'active_until',
-            'mode',
-            'promo_common',
-            'promo_unique',
-            'like_count',
-            'comment_count',
-            'used_count',
-            'active',
-        )
-
-    def get_promo_unique(self, obj):
-        return obj.get_available_unique_codes
-
-    def to_representation(self, instance):
-        data = super().to_representation(instance)
-        if instance.mode == business.constants.PROMO_MODE_COMMON:
-            data.pop('promo_unique', None)
-        else:
-            data.pop('promo_common', None)
-
-        return data
-
-
-class PromoDetailSerializer(rest_framework.serializers.ModelSerializer):
-    promo_id = rest_framework.serializers.UUIDField(
-        source='id',
-        read_only=True,
-    )
-    description = rest_framework.serializers.CharField(
-        min_length=business.constants.PROMO_DESC_MIN_LENGTH,
-        max_length=business.constants.PROMO_DESC_MAX_LENGTH,
-        required=True,
-    )
-    image_url = rest_framework.serializers.CharField(
-        required=False,
-        max_length=business.constants.PROMO_IMAGE_URL_MAX_LENGTH,
-        validators=[
-            django.core.validators.URLValidator(schemes=['http', 'https']),
-        ],
-    )
-    target = TargetSerializer(allow_null=True, required=False)
-    promo_unique = rest_framework.serializers.SerializerMethodField()
     company_name = rest_framework.serializers.CharField(
         source='company.name',
         read_only=True,
@@ -500,31 +494,26 @@ class PromoDetailSerializer(rest_framework.serializers.ModelSerializer):
         read_only=True,
     )
 
-    class Meta:
-        model = business.models.Promo
-        fields = (
+    promo_unique = rest_framework.serializers.SerializerMethodField()
+
+    class Meta(BasePromoSerializer.Meta):
+        fields = BasePromoSerializer.Meta.fields + (
             'promo_id',
-            'description',
-            'image_url',
-            'target',
-            'max_count',
-            'active_from',
-            'active_until',
-            'mode',
-            'promo_common',
-            'promo_unique',
             'company_name',
-            'active',
             'like_count',
             'comment_count',
             'used_count',
+            'active',
         )
 
     def get_promo_unique(self, obj):
-        return obj.get_available_unique_codes
+        if obj.mode == business.constants.PROMO_MODE_UNIQUE:
+            return obj.get_available_unique_codes
+        return None
 
     def update(self, instance, validated_data):
         target_data = validated_data.pop('target', None)
+
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
 
@@ -534,13 +523,18 @@ class PromoDetailSerializer(rest_framework.serializers.ModelSerializer):
         instance.save()
         return instance
 
-    def validate(self, data):
-        data = super().validate(data)
-        validator = business.validators.PromoValidator(
-            data=data,
-            instance=self.instance,
-        )
-        return validator.validate()
+
+class PromoReadOnlySerializer(PromoDetailSerializer):
+    """Read-only serializer for promo."""
+
+    company_id = rest_framework.serializers.UUIDField(
+        source='company.id',
+        read_only=True,
+    )
+
+    class Meta(PromoDetailSerializer.Meta):
+        fields = PromoDetailSerializer.Meta.fields + ('company_id',)
+        read_only_fields = fields
 
 
 class CountryStatSerializer(rest_framework.serializers.Serializer):

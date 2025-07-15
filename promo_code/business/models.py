@@ -119,8 +119,7 @@ class Promo(django.db.models.Model):
     def get_used_codes_count(self) -> int:
         if self.mode == business.constants.PROMO_MODE_UNIQUE:
             return self.unique_codes.filter(is_used=True).count()
-        # TODO: COMMON Promo
-        return 0
+        return self.used_count
 
     @property
     def get_available_unique_codes(self) -> list[str] | None:
