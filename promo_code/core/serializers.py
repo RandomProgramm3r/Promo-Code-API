@@ -112,7 +112,8 @@ class BasePromoSerializer(rest_framework.serializers.ModelSerializer):
         required=True,
     )
     target = TargetSerializer(
-        required=True, allow_null=True,
+        required=True,
+        allow_null=True,
     )
     promo_common = rest_framework.serializers.CharField(
         min_length=business.constants.PROMO_COMMON_CODE_MIN_LENGTH,
