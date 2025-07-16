@@ -173,14 +173,16 @@ class MultiCountryField(rest_framework.serializers.ListField):
         return super().to_internal_value(data)
 
 
-class PromoCreateSerializer(core.serializers.BasePromoSerializer):
+class PromoCreateSerializer(core.serializers.BaseCompanyPromoSerializer):
     url = rest_framework.serializers.HyperlinkedIdentityField(
         view_name='api-business:promo-detail',
         lookup_field='id',
     )
 
-    class Meta(core.serializers.BasePromoSerializer.Meta):
-        fields = ('url',) + core.serializers.BasePromoSerializer.Meta.fields
+    class Meta(core.serializers.BaseCompanyPromoSerializer.Meta):
+        fields = (
+            'url',
+        ) + core.serializers.BaseCompanyPromoSerializer.Meta.fields
 
     def create(self, validated_data):
         target_data = validated_data.pop('target')
@@ -225,7 +227,7 @@ class PromoListQuerySerializer(
         return attrs
 
 
-class PromoDetailSerializer(core.serializers.BasePromoSerializer):
+class PromoDetailSerializer(core.serializers.BaseCompanyPromoSerializer):
     promo_id = rest_framework.serializers.UUIDField(
         source='id',
         read_only=True,
@@ -253,8 +255,8 @@ class PromoDetailSerializer(core.serializers.BasePromoSerializer):
 
     promo_unique = rest_framework.serializers.SerializerMethodField()
 
-    class Meta(core.serializers.BasePromoSerializer.Meta):
-        fields = core.serializers.BasePromoSerializer.Meta.fields + (
+    class Meta(core.serializers.BaseCompanyPromoSerializer.Meta):
+        fields = core.serializers.BaseCompanyPromoSerializer.Meta.fields + (
             'promo_id',
             'company_name',
             'like_count',
