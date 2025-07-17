@@ -22,6 +22,21 @@ class CompanyManager(django.contrib.auth.models.BaseUserManager):
 
 
 class PromoManager(django.db.models.Manager):
+    with_related_fields = (
+        'id',
+        'company__id',
+        'company__name',
+        'description',
+        'image_url',
+        'target',
+        'max_count',
+        'active_from',
+        'active_until',
+        'mode',
+        'promo_common',
+        'created_at',
+    )
+
     def get_queryset(self):
         return super().get_queryset()
 
@@ -30,19 +45,7 @@ class PromoManager(django.db.models.Manager):
             self.select_related('company')
             .prefetch_related('unique_codes')
             .only(
-                'id',
-                'company',
-                'description',
-                'image_url',
-                'target',
-                'max_count',
-                'active_from',
-                'active_until',
-                'mode',
-                'promo_common',
-                'created_at',
-                'company__id',
-                'company__name',
+                *self.with_related_fields,
             )
         )
 

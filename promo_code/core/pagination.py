@@ -1,4 +1,3 @@
-import rest_framework.exceptions
 import rest_framework.pagination
 import rest_framework.response
 

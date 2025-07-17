@@ -1,7 +1,5 @@
-import django.contrib.auth.password_validation
 import django.core.cache
 import django.db.transaction
-import pycountry
 import rest_framework.exceptions
 import rest_framework.serializers
 import rest_framework_simplejwt.serializers
@@ -9,79 +7,12 @@ import rest_framework_simplejwt.token_blacklist.models as tb_models
 import rest_framework_simplejwt.tokens
 
 import business.constants
-import business.models
+import core.serializers
 import core.utils.auth
-import user.constants
 import user.models
 
 
-class OtherFieldSerializer(rest_framework.serializers.Serializer):
-    age = rest_framework.serializers.IntegerField(
-        required=True,
-        min_value=user.constants.AGE_MIN,
-        max_value=user.constants.AGE_MAX,
-    )
-    country = rest_framework.serializers.CharField(
-        required=True,
-        max_length=user.constants.COUNTRY_CODE_LENGTH,
-        min_length=user.constants.COUNTRY_CODE_LENGTH,
-    )
-
-    def validate(self, value):
-        country = value['country']
-
-        try:
-            pycountry.countries.lookup(country.upper())
-        except LookupError:
-            raise rest_framework.serializers.ValidationError(
-                'Invalid ISO 3166-1 alpha-2 country code.',
-            )
-
-        return value
-
-
-class SignUpSerializer(rest_framework.serializers.ModelSerializer):
-    password = rest_framework.serializers.CharField(
-        write_only=True,
-        required=True,
-        validators=[django.contrib.auth.password_validation.validate_password],
-        max_length=user.constants.PASSWORD_MAX_LENGTH,
-        min_length=user.constants.PASSWORD_MIN_LENGTH,
-        style={'input_type': 'password'},
-    )
-    name = rest_framework.serializers.CharField(
-        required=True,
-        min_length=user.constants.NAME_MIN_LENGTH,
-        max_length=user.constants.NAME_MAX_LENGTH,
-    )
-    surname = rest_framework.serializers.CharField(
-        required=True,
-        min_length=user.constants.SURNAME_MIN_LENGTH,
-        max_length=user.constants.SURNAME_MAX_LENGTH,
-    )
-    email = rest_framework.serializers.EmailField(
-        required=True,
-        min_length=user.constants.EMAIL_MIN_LENGTH,
-        max_length=user.constants.EMAIL_MAX_LENGTH,
-    )
-    avatar_url = rest_framework.serializers.URLField(
-        required=False,
-        max_length=user.constants.AVATAR_URL_MAX_LENGTH,
-        allow_null=True,
-    )
-    other = OtherFieldSerializer(required=True)
-
-    class Meta:
-        model = user.models.User
-        fields = (
-            'name',
-            'surname',
-            'email',
-            'avatar_url',
-            'other',
-            'password',
-        )
-
+class SignUpSerializer(core.serializers.BaseUserSerializer):
     @django.db.transaction.atomic
     def create(self, validated_data):
         try:
@@ -166,81 +97,45 @@ class SignInSerializer(
         return token
 
 
-class UserProfileSerializer(rest_framework.serializers.ModelSerializer):
-    name = rest_framework.serializers.CharField(
-        required=False,
-        min_length=user.constants.NAME_MIN_LENGTH,
-        max_length=user.constants.NAME_MAX_LENGTH,
-    )
-    surname = rest_framework.serializers.CharField(
-        required=False,
-        min_length=user.constants.SURNAME_MIN_LENGTH,
-        max_length=user.constants.SURNAME_MAX_LENGTH,
-    )
-    email = rest_framework.serializers.EmailField(
-        required=False,
-        min_length=user.constants.EMAIL_MIN_LENGTH,
-        max_length=user.constants.EMAIL_MAX_LENGTH,
-    )
-    password = rest_framework.serializers.CharField(
-        write_only=True,
-        required=False,
-        validators=[django.contrib.auth.password_validation.validate_password],
-        max_length=user.constants.PASSWORD_MAX_LENGTH,
-        min_length=user.constants.PASSWORD_MIN_LENGTH,
-        style={'input_type': 'password'},
-    )
-    avatar_url = rest_framework.serializers.URLField(
-        required=False,
-        max_length=user.constants.AVATAR_URL_MAX_LENGTH,
-        allow_null=True,
-    )
-    other = OtherFieldSerializer(required=False)
+class UserProfileSerializer(core.serializers.BaseUserSerializer):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for field in self.fields.values():
+            field.required = False
 
-    class Meta:
-        model = user.models.User
-        fields = (
-            'name',
-            'surname',
-            'email',
-            'password',
-            'avatar_url',
-            'other',
-        )
+    def validate_email(self, value):
+        if (
+            user.models.User.objects.filter(email=value)
+            .exclude(pk=self.instance.pk)
+            .exists()
+        ):
+            raise rest_framework.serializers.ValidationError(
+                {'email': 'This email address is already registered.'},
+            )
+        return value
 
     def update(self, instance, validated_data):
         password = validated_data.pop('password', None)
+        other_data = validated_data.pop('other', None)
+
+        instance = super().update(instance, validated_data)
+
+        if other_data is not None:
+            instance.other.update(other_data)
 
         if password:
-            # do not invalidate the token
             instance.set_password(password)
 
-        other_data = validated_data.pop('other', None)
+        update_fields = []
         if other_data is not None:
-            instance.other = other_data
+            update_fields.append('other')
+        if password:
+            update_fields.append('password')
 
-        if (
-            'email' in validated_data
-            and user.models.User.objects.filter(
-                email=validated_data['email'],
-            )
-            .exclude(id=instance.id)
-            .exists()
-        ):
-            raise rest_framework.exceptions.ValidationError(
-                {'email': 'This email address is already registered.'},
-            )
+        if update_fields:
+            instance.save(update_fields=update_fields)
 
-        for attr, value in validated_data.items():
-            setattr(instance, attr, value)
-
-        instance.save()
-
-        user_type = instance.__class__.__name__.lower()
-        token_version = instance.token_version
-
-        cache_key = f'auth_instance_{user_type}_{instance.id}_v{token_version}'
-        django.core.cache.cache.delete(cache_key)
+        self._invalidate_cache(instance)
         return instance
 
     def to_representation(self, instance):
@@ -251,254 +146,90 @@ class UserProfileSerializer(rest_framework.serializers.ModelSerializer):
             data.pop('avatar_url', None)
         return data
 
+    def _invalidate_cache(self, instance):
+        """
+        Private helper to remove the authentication instance cache key.
+        """
 
-class UserFeedQuerySerializer(rest_framework.serializers.Serializer):
+        user_type = instance.__class__.__name__.lower()
+        token_version = getattr(instance, 'token_version', None)
+        cache_key = f'auth_instance_{user_type}_{instance.id}_v{token_version}'
+        django.core.cache.cache.delete(cache_key)
+
+
+class UserFeedQuerySerializer(
+    core.serializers.BaseLimitOffsetPaginationSerializer,
+):
     """
     Serializer for validating query parameters of promo feed requests.
     """
 
-    limit = rest_framework.serializers.CharField(
-        required=False,
-        allow_blank=True,
-    )
-    offset = rest_framework.serializers.CharField(
-        required=False,
-        allow_blank=True,
-    )
     category = rest_framework.serializers.CharField(
         min_length=business.constants.TARGET_CATEGORY_MIN_LENGTH,
         max_length=business.constants.TARGET_CATEGORY_MAX_LENGTH,
         required=False,
-        allow_blank=True,
+        allow_blank=False,
     )
     active = rest_framework.serializers.BooleanField(
         required=False,
-        allow_null=True,
     )
-
-    _allowed_params = None
-
-    def get_allowed_params(self):
-        if self._allowed_params is None:
-            self._allowed_params = set(self.fields.keys())
-        return self._allowed_params
 
     def validate(self, attrs):
-        query_params = self.initial_data
-        allowed_params = self.get_allowed_params()
+        query_params = self.initial_data.keys()
+        allowed_params = self.fields.keys()
+        unexpected_params = set(query_params) - set(allowed_params)
 
-        unexpected_params = set(query_params.keys()) - allowed_params
         if unexpected_params:
-            raise rest_framework.exceptions.ValidationError('Invalid params.')
-
-        field_errors = {}
-
-        attrs = self._validate_int_field('limit', attrs, field_errors)
-        attrs = self._validate_int_field('offset', attrs, field_errors)
-
-        if field_errors:
-            raise rest_framework.exceptions.ValidationError(field_errors)
-
-        return attrs
-
-    def validate_category(self, value):
-        cotegory = self.initial_data.get('category')
-
-        if cotegory is None:
-            return value
-
-        if value == '':
             raise rest_framework.exceptions.ValidationError(
-                'Invalid category format.',
+                f'Invalid parameters: {", ".join(unexpected_params)}',
             )
 
-        return value
-
-    def _validate_int_field(self, field_name, attrs, field_errors):
-        value_str = self.initial_data.get(field_name)
-        if value_str is None:
-            return attrs
-
-        if value_str == '':
-            raise rest_framework.exceptions.ValidationError(
-                f'Invalid {field_name} format.',
-            )
-
-        try:
-            value_int = int(value_str)
-            if value_int < 0:
-                raise rest_framework.exceptions.ValidationError(
-                    f'{field_name.capitalize()} cannot be negative.',
-                )
-            attrs[field_name] = value_int
-        except (ValueError, TypeError):
-            raise rest_framework.exceptions.ValidationError(
-                f'Invalid {field_name} format.',
-            )
-
-        return attrs
-
-
-class PromoFeedSerializer(rest_framework.serializers.ModelSerializer):
-    promo_id = rest_framework.serializers.UUIDField(source='id')
-    company_id = rest_framework.serializers.UUIDField(source='company.id')
-    company_name = rest_framework.serializers.CharField(source='company.name')
-    active = rest_framework.serializers.BooleanField(source='is_active')
-    is_activated_by_user = rest_framework.serializers.SerializerMethodField()
-    like_count = rest_framework.serializers.IntegerField(
-        source='get_like_count',
-        read_only=True,
-    )
-    comment_count = rest_framework.serializers.IntegerField(
-        source='get_comment_count',
-        read_only=True,
-    )
-    is_liked_by_user = rest_framework.serializers.SerializerMethodField()
-
-    class Meta:
-        model = business.models.Promo
-        fields = [
-            'promo_id',
-            'company_id',
-            'company_name',
-            'description',
-            'image_url',
-            'active',
-            'is_activated_by_user',
-            'like_count',
-            'is_liked_by_user',
-            'comment_count',
-        ]
-
-        read_only_fields = fields
-
-    def get_is_liked_by_user(self, obj: business.models.Promo) -> bool:
-        request = self.context.get('request')
         if (
-            request
-            and hasattr(request, 'user')
-            and request.user.is_authenticated
+            'category' in self.initial_data
+            and self.initial_data.get('category') == ''
         ):
-            return user.models.PromoLike.objects.filter(
-                promo=obj,
-                user=request.user,
-            ).exists()
-        return False
+            raise rest_framework.serializers.ValidationError(
+                {'category': 'This field cannot be blank.'},
+            )
 
-    def get_is_activated_by_user(self, obj) -> bool:
-        # TODO:
-        return False
+        return attrs
 
 
-class UserPromoDetailSerializer(rest_framework.serializers.ModelSerializer):
+class PromoFeedSerializer(core.serializers.BaseUserPromoSerializer):
+    """
+    Serializer for representing promo feed data for a user.
+    """
+
+    pass
+
+
+class UserPromoDetailSerializer(core.serializers.BaseUserPromoSerializer):
     """
     Serializer for detailed promo-code information
     (without revealing the code value).
     The output format matches the given example.
     """
 
-    promo_id = rest_framework.serializers.UUIDField(
-        source='id',
-        read_only=True,
-    )
-    company_id = rest_framework.serializers.UUIDField(
-        source='company.id',
-        read_only=True,
-    )
-    company_name = rest_framework.serializers.CharField(
-        source='company.name',
-        read_only=True,
-    )
-    active = rest_framework.serializers.BooleanField(
-        source='is_active',
-        read_only=True,
-    )
-    is_activated_by_user = rest_framework.serializers.SerializerMethodField()
-    like_count = rest_framework.serializers.IntegerField(
-        source='get_like_count',
-        read_only=True,
-    )
-    comment_count = rest_framework.serializers.IntegerField(
-        source='get_comment_count',
-        read_only=True,
-    )
-    is_liked_by_user = rest_framework.serializers.SerializerMethodField()
+    pass
 
-    class Meta:
-        model = business.models.Promo
-        fields = (
-            'promo_id',
-            'company_id',
-            'company_name',
-            'description',
-            'image_url',
-            'active',
-            'is_activated_by_user',
-            'like_count',
-            'comment_count',
-            'is_liked_by_user',
-        )
+
+class UserAuthorSerializer(core.serializers.BaseUserSerializer):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for field in self.fields.values():
+            field.required = False
+
+    class Meta(core.serializers.BaseUserSerializer.Meta):
+        fields = ('name', 'surname', 'avatar_url')
         read_only_fields = fields
 
-    def get_is_liked_by_user(self, obj: business.models.Promo) -> bool:
-        request = self.context.get('request')
-        if (
-            request
-            and hasattr(request, 'user')
-            and request.user.is_authenticated
-        ):
-            return user.models.PromoLike.objects.filter(
-                promo=obj,
-                user=request.user,
-            ).exists()
-        return False
 
-    def get_is_activated_by_user(self, obj: business.models.Promo) -> bool:
-        """
-        Checks whether the current user has activated this promo code.
-        """
-        request = self.context.get('request')
-        if not (
-            request
-            and hasattr(request, 'user')
-            and request.user.is_authenticated
-        ):
-            return False
+class CommentSerializer(core.serializers.BaseCommentSerializer):
+    """
+    Serializer for displaying (reading) a comment.
+    """
 
-        return user.models.PromoActivationHistory.objects.filter(
-            promo=obj,
-            user=request.user,
-        ).exists()
-
-
-class UserAuthorSerializer(rest_framework.serializers.ModelSerializer):
-    name = rest_framework.serializers.CharField(
-        read_only=True,
-        min_length=1,
-        max_length=100,
-    )
-    surname = rest_framework.serializers.CharField(
-        read_only=True,
-        min_length=1,
-        max_length=120,
-    )
-    avatar_url = rest_framework.serializers.URLField(
-        read_only=True,
-        max_length=350,
-        allow_null=True,
-    )
-
-    class Meta:
-        model = user.models.User
-        fields = ('name', 'surname', 'avatar_url')
-
-
-class CommentSerializer(rest_framework.serializers.ModelSerializer):
     id = rest_framework.serializers.UUIDField(read_only=True)
-    text = rest_framework.serializers.CharField(
-        min_length=user.constants.COMMENT_TEXT_MIN_LENGTH,
-        max_length=user.constants.COMMENT_TEXT_MAX_LENGTH,
-    )
     date = rest_framework.serializers.DateTimeField(
         source='created_at',
         read_only=True,
@@ -506,31 +237,20 @@ class CommentSerializer(rest_framework.serializers.ModelSerializer):
     )
     author = UserAuthorSerializer(read_only=True)
 
-    class Meta:
-        model = user.models.PromoComment
-        fields = ('id', 'text', 'date', 'author')
+    class Meta(core.serializers.BaseCommentSerializer.Meta):
+        fields = core.serializers.BaseCommentSerializer.Meta.fields + (
+            'id',
+            'date',
+            'author',
+        )
 
 
-class CommentCreateSerializer(rest_framework.serializers.ModelSerializer):
-    text = rest_framework.serializers.CharField(
-        min_length=user.constants.COMMENT_TEXT_MIN_LENGTH,
-        max_length=user.constants.COMMENT_TEXT_MAX_LENGTH,
-    )
-
-    class Meta:
-        model = user.models.PromoComment
-        fields = ('text',)
+class CommentCreateSerializer(core.serializers.BaseCommentSerializer):
+    pass
 
 
-class CommentUpdateSerializer(rest_framework.serializers.ModelSerializer):
-    text = rest_framework.serializers.CharField(
-        min_length=user.constants.COMMENT_TEXT_MIN_LENGTH,
-        max_length=user.constants.COMMENT_TEXT_MAX_LENGTH,
-    )
-
-    class Meta:
-        model = user.models.PromoComment
-        fields = ('text',)
+class CommentUpdateSerializer(core.serializers.BaseCommentSerializer):
+    pass
 
 
 class PromoActivationSerializer(rest_framework.serializers.Serializer):
