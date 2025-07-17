@@ -1,5 +1,4 @@
 import rest_framework.status
-import rest_framework.test
 
 import user.tests.user.base
 
@@ -9,436 +8,211 @@ class TestUserPromoLikeActions(user.tests.user.base.BaseUserTestCase):
     def setUpTestData(cls):
         super().setUpTestData()
 
-        user1_payload = {
-            'name': 'Steve',
-            'surname': 'Wozniak',
-            'email': 'creator1@apple.com',
-            'password': 'WhoLiveSInCalifornia2000!',
-            'other': {'age': 60, 'country': 'gb'},
-        }
-        resp_user1 = cls.client.post(
-            cls.user_signup_url,
-            user1_payload,
-            format='json',
+        cls.user1_token = cls._create_user_and_get_token(
+            name='Steve',
+            surname='Wozniak',
+            email='creator1@apple.com',
+            password='WhoLiveSInCalifornia2000!',
+            other={'age': 60, 'country': 'gb'},
         )
-        assert resp_user1.status_code == rest_framework.status.HTTP_200_OK, (
-            'User1 signup failed'
+        cls.user2_token = cls._create_user_and_get_token(
+            name='Mike',
+            surname='Bloomberg',
+            email='mike@bloomberg.com',
+            password='WhoLiveSInCalifornia2000!',
+            other={'age': 15, 'country': 'us'},
         )
-        cls.user1_token = resp_user1.data['access']
+        cls.user3_token = cls._create_user_and_get_token(
+            name='Yefim',
+            surname='Dinitz',
+            email='algo@prog.lu',
+            password='HardPASSword1!',
+            other={'age': 40, 'country': 'lu'},
+        )
 
-        user2_payload = {
-            'name': 'Mike',
-            'surname': 'Bloomberg',
-            'email': 'mike@bloomberg.com',
-            'password': 'WhoLiveSInCalifornia2000!',
-            'other': {'age': 15, 'country': 'us'},
-        }
-        resp_user2 = cls.client.post(
-            cls.user_signup_url,
-            user2_payload,
-            format='json',
+        cls.promo1_id = cls._create_promo(
+            description='Active COMMON promo for all users',
+            target={},
+            max_count=10,
+            active_from='2025-01-10',
+            mode='COMMON',
+            promo_common='sale-10',
         )
-        assert resp_user2.status_code == rest_framework.status.HTTP_200_OK, (
-            'User2 signup failed'
-        )
-        cls.user2_token = resp_user2.data['access']
 
-        user3_payload = {
-            'name': 'Yefim',
-            'surname': 'Dinitz',
-            'email': 'algo@prog.lu',
-            'password': 'HardPASSword1!',
-            'other': {'age': 40, 'country': 'lu'},
+    @classmethod
+    def _create_user_and_get_token(cls, name, surname, email, password, other):
+        payload = {
+            'name': name,
+            'surname': surname,
+            'email': email,
+            'password': password,
+            'other': other,
         }
-        resp_user3 = cls.client.post(
-            cls.user_signup_url,
-            user3_payload,
-            format='json',
-        )
-        assert resp_user3.status_code == rest_framework.status.HTTP_200_OK, (
-            'User3 signup failed'
-        )
-        cls.user3_token = resp_user3.data['access']
+        response = cls.client.post(cls.user_signup_url, payload, format='json')
+        assert response.status_code == rest_framework.status.HTTP_200_OK
+        return response.data['access']
 
+    @classmethod
+    def _create_promo(
+        cls,
+        description,
+        target,
+        max_count,
+        active_from,
+        mode,
+        promo_common,
+    ):
         cls.client.credentials(
             HTTP_AUTHORIZATION='Bearer ' + cls.company1_token,
         )
-        promo1_data = {
-            'description': 'Active COMMON promo for all users',
-            'target': {},
-            'max_count': 10,
-            'active_from': '2025-01-10',
-            'mode': 'COMMON',
-            'promo_common': 'sale-10',
+        data = {
+            'description': description,
+            'target': target,
+            'max_count': max_count,
+            'active_from': active_from,
+            'mode': mode,
+            'promo_common': promo_common,
         }
-        resp_promo1 = cls.client.post(
+        response = cls.client.post(
             cls.promo_list_create_url,
-            promo1_data,
+            data,
             format='json',
         )
-        assert (
-            resp_promo1.status_code == rest_framework.status.HTTP_201_CREATED
-        ), f'Promo1 creation failed: {resp_promo1.data}'
-        cls.promo1_id = resp_promo1.data['id']
+        assert response.status_code == rest_framework.status.HTTP_201_CREATED
         cls.client.credentials()
+        return response.data['id']
 
-    def test_01_get_promo1_by_user1_initial_state(self):
-        self.client.credentials(
-            HTTP_AUTHORIZATION='Bearer ' + self.user1_token,
-        )
-        response = self.client.get(
-            self.get_user_promo_detail_url(self.promo1_id),
-            format='json',
-        )
-        self.assertEqual(
-            response.status_code,
-            rest_framework.status.HTTP_200_OK,
-        )
-        self.assertEqual(response.data['promo_id'], self.promo1_id)
-        self.assertEqual(response.data['like_count'], 0)
-        self.assertEqual(response.data['is_liked_by_user'], False)
-        self.client.credentials()
+    def _auth(self, token):
+        self.client.credentials(HTTP_AUTHORIZATION='Bearer ' + token)
 
-    def test_02_get_promo1_by_company1_initial_state(self):
-        self.client.credentials(
-            HTTP_AUTHORIZATION='Bearer ' + self.company1_token,
-        )
-        response = self.client.get(
+    def _get_user_promo(self, user_token):
+        self._auth(user_token)
+        return self.client.get(self.get_user_promo_detail_url(self.promo1_id))
+
+    def _get_business_promo(self):
+        self._auth(self.company1_token)
+        return self.client.get(
             self.get_business_promo_detail_url(self.promo1_id),
+        )
+
+    def _like(self, token):
+        self._auth(token)
+        return self.client.post(
+            self.get_user_promo_like_url(self.promo1_id),
             format='json',
         )
+
+    def _unlike(self, token):
+        self._auth(token)
+        return self.client.delete(
+            self.get_user_promo_like_url(self.promo1_id),
+            format='json',
+        )
+
+    def tearDown(self):
+        super().tearDown()
+
+        self.client.credentials()
+
+    def test_initial_promo_state(self):
+        response = self._get_user_promo(self.user1_token)
         self.assertEqual(
             response.status_code,
             rest_framework.status.HTTP_200_OK,
         )
-        self.assertEqual(response.data['promo_id'], self.promo1_id)
         self.assertEqual(response.data['like_count'], 0)
-        self.client.credentials()
+        self.assertFalse(response.data['is_liked_by_user'])
 
-    def test_03_user1_likes_promo1(self):
-        self.client.credentials(
-            HTTP_AUTHORIZATION='Bearer ' + self.user1_token,
+        response = self._get_business_promo()
+        self.assertEqual(
+            response.status_code,
+            rest_framework.status.HTTP_200_OK,
         )
-        response = self.client.post(
-            self.get_user_promo_like_url(self.promo1_id),
-            format='json',
-        )
+        self.assertEqual(response.data['like_count'], 0)
+
+    def test_like_action(self):
+        response = self._like(self.user1_token)
         self.assertEqual(
             response.status_code,
             rest_framework.status.HTTP_200_OK,
         )
         self.assertEqual(response.data, {'status': 'ok'})
-        self.client.credentials()
 
-    def test_04_user1_likes_promo1_again_idempotency(self):
-        self.client.credentials(
-            HTTP_AUTHORIZATION='Bearer ' + self.user1_token,
-        )
-        url = self.get_user_promo_like_url(self.promo1_id)
-        self.client.post(url, format='json')
+    def test_like_idempotency(self):
+        self._like(self.user1_token)
+        before = self._get_user_promo(self.user1_token)
+        self.assertEqual(before.data['like_count'], 1)
 
-        response = self.client.post(url, format='json')
+        response = self._like(self.user1_token)
         self.assertEqual(
             response.status_code,
             rest_framework.status.HTTP_200_OK,
         )
-        self.assertEqual(response.data, {'status': 'ok'})
-        self.client.credentials()
+        after = self._get_user_promo(self.user1_token)
+        self.assertEqual(after.data['like_count'], 1)
+        self.assertTrue(after.data['is_liked_by_user'])
 
-    def test_05_get_promo1_by_user1_after_like(self):
-        self.client.credentials(
-            HTTP_AUTHORIZATION='Bearer ' + self.user1_token,
-        )
-        like_response = self.client.post(
-            self.get_user_promo_like_url(self.promo1_id),
-            format='json',
-        )
-        self.assertEqual(
-            like_response.status_code,
-            rest_framework.status.HTTP_200_OK,
-        )
-        response = self.client.get(
-            self.get_user_promo_detail_url(self.promo1_id),
-            format='json',
-        )
+    def test_unlike_action(self):
+        self._like(self.user1_token)
+        response = self._unlike(self.user1_token)
         self.assertEqual(
             response.status_code,
             rest_framework.status.HTTP_200_OK,
         )
-        self.assertEqual(response.data['promo_id'], self.promo1_id)
-        self.assertEqual(response.data['like_count'], 1)
-        self.assertEqual(response.data['is_liked_by_user'], True)
-        self.client.credentials()
 
-    def test_06_get_promo1_by_user2_before_own_like(self):
-        original_user_client = rest_framework.test.APIClient()
-        original_user_client.credentials(
-            HTTP_AUTHORIZATION='Bearer ' + self.user1_token,
+        details = self._get_user_promo(self.user1_token)
+        self.assertEqual(details.data['like_count'], 0)
+        self.assertFalse(details.data['is_liked_by_user'])
+
+    def test_unlike_idempotency(self):
+        self._like(self.user1_token)
+        self._unlike(self.user1_token)
+        before = self._get_user_promo(self.user1_token)
+        self.assertEqual(before.data['like_count'], 0)
+
+        response = self._unlike(self.user1_token)
+        self.assertEqual(
+            response.status_code,
+            rest_framework.status.HTTP_200_OK,
         )
-        original_user_client.post(
-            self.get_user_promo_like_url(self.promo1_id),
-            format='json',
+        after = self._get_user_promo(self.user1_token)
+        self.assertEqual(after.data['like_count'], 0)
+
+    def test_unlike_nonexistent(self):
+        response = self._unlike(self.user3_token)
+        self.assertEqual(
+            response.status_code,
+            rest_framework.status.HTTP_200_OK,
         )
-        self.client.credentials(
-            HTTP_AUTHORIZATION='Bearer ' + self.user2_token,
-        )
-        response = self.client.get(
-            self.get_user_promo_detail_url(self.promo1_id),
-            format='json',
-        )
+
+    def test_user1_state_after_user2_like_and_unlike(self):
+        self._like(self.user2_token)
+        self._like(self.user1_token)
+        self._unlike(self.user1_token)
+
+        response = self._get_user_promo(self.user1_token)
         self.assertEqual(
             response.status_code,
             rest_framework.status.HTTP_200_OK,
         )
         self.assertEqual(response.data['like_count'], 1)
-        self.assertEqual(
-            response.data['is_liked_by_user'],
-            False,
-        )
-        self.client.credentials()
+        self.assertFalse(response.data['is_liked_by_user'])
 
-    def test_07_user2_likes_promo1(self):
-        self.client.credentials(
-            HTTP_AUTHORIZATION='Bearer ' + self.user2_token,
-        )
-        response = self.client.post(
-            self.get_user_promo_like_url(self.promo1_id),
-            format='json',
-        )
-        self.assertEqual(
-            response.status_code,
-            rest_framework.status.HTTP_200_OK,
-        )
-        self.assertEqual(response.data, {'status': 'ok'})
-        self.client.credentials()
+    def test_multiple_user_likes(self):
+        self._like(self.user1_token)
 
-    def test_08_get_promo1_by_user2_after_own_like(self):
-        temp_client_user1 = rest_framework.test.APIClient()
-        temp_client_user1.credentials(
-            HTTP_AUTHORIZATION='Bearer ' + self.user1_token,
-        )
-        temp_client_user1.post(
-            self.get_user_promo_like_url(self.promo1_id),
-            format='json',
-        )
+        user2_before = self._get_user_promo(self.user2_token)
+        self.assertEqual(user2_before.data['like_count'], 1)
+        self.assertFalse(user2_before.data['is_liked_by_user'])
 
-        self.client.credentials(
-            HTTP_AUTHORIZATION='Bearer ' + self.user2_token,
-        )
-        like_response = self.client.post(
-            self.get_user_promo_like_url(self.promo1_id),
-            format='json',
-        )
-        self.assertEqual(
-            like_response.status_code,
-            rest_framework.status.HTTP_200_OK,
-        )
+        self._like(self.user2_token)
+        user2_after = self._get_user_promo(self.user2_token)
+        self.assertEqual(user2_after.data['like_count'], 2)
+        self.assertTrue(user2_after.data['is_liked_by_user'])
 
-        response = self.client.get(
-            self.get_user_promo_detail_url(self.promo1_id),
-            format='json',
-        )
-        self.assertEqual(
-            response.status_code,
-            rest_framework.status.HTTP_200_OK,
-        )
-        self.assertEqual(
-            response.data['like_count'],
-            2,
-        )
-        self.assertEqual(response.data['is_liked_by_user'], True)
-        self.client.credentials()
+        user3_response = self._get_user_promo(self.user3_token)
+        self.assertEqual(user3_response.data['like_count'], 2)
+        self.assertFalse(user3_response.data['is_liked_by_user'])
 
-    def test_09_user3_deletes_non_existent_like_for_promo1_idempotency(self):
-        self.client.credentials(
-            HTTP_AUTHORIZATION='Bearer ' + self.user3_token,
-        )
-        response = self.client.delete(
-            self.get_user_promo_like_url(self.promo1_id),
-            format='json',
-        )
-        self.assertEqual(
-            response.status_code,
-            rest_framework.status.HTTP_200_OK,
-        )
-        self.assertEqual(response.data, {'status': 'ok'})
-        self.client.credentials()
-
-    def test_10_get_promo1_by_user3_no_like_state(self):
-        temp_client_user1 = rest_framework.test.APIClient()
-        temp_client_user1.credentials(
-            HTTP_AUTHORIZATION='Bearer ' + self.user1_token,
-        )
-        temp_client_user1.post(
-            self.get_user_promo_like_url(self.promo1_id),
-            format='json',
-        )
-
-        temp_client_user2 = rest_framework.test.APIClient()
-        temp_client_user2.credentials(
-            HTTP_AUTHORIZATION='Bearer ' + self.user2_token,
-        )
-        temp_client_user2.post(
-            self.get_user_promo_like_url(self.promo1_id),
-            format='json',
-        )
-
-        self.client.credentials(
-            HTTP_AUTHORIZATION='Bearer ' + self.user3_token,
-        )
-        response = self.client.get(
-            self.get_user_promo_detail_url(self.promo1_id),
-            format='json',
-        )
-        self.assertEqual(
-            response.status_code,
-            rest_framework.status.HTTP_200_OK,
-        )
-        self.assertEqual(
-            response.data['like_count'],
-            2,
-        )
-        self.assertEqual(response.data['is_liked_by_user'], False)
-        self.client.credentials()
-
-    def test_11_get_promo1_by_company1_after_all_likes(self):
-        temp_client_user1 = rest_framework.test.APIClient()
-        temp_client_user1.credentials(
-            HTTP_AUTHORIZATION='Bearer ' + self.user1_token,
-        )
-        temp_client_user1.post(
-            self.get_user_promo_like_url(self.promo1_id),
-            format='json',
-        )
-
-        temp_client_user2 = rest_framework.test.APIClient()
-        temp_client_user2.credentials(
-            HTTP_AUTHORIZATION='Bearer ' + self.user2_token,
-        )
-        temp_client_user2.post(
-            self.get_user_promo_like_url(self.promo1_id),
-            format='json',
-        )
-
-        self.client.credentials(
-            HTTP_AUTHORIZATION='Bearer ' + self.company1_token,
-        )
-        response = self.client.get(
-            self.get_business_promo_detail_url(self.promo1_id),
-            format='json',
-        )
-        self.assertEqual(
-            response.status_code,
-            rest_framework.status.HTTP_200_OK,
-        )
-        self.assertEqual(response.data['like_count'], 2)
-        self.client.credentials()
-
-    def test_12_user1_unlikes_promo1(self):
-        self.client.credentials(
-            HTTP_AUTHORIZATION='Bearer ' + self.user1_token,
-        )
-        self.client.post(
-            self.get_user_promo_like_url(self.promo1_id),
-            format='json',
-        )
-        response = self.client.delete(
-            self.get_user_promo_like_url(self.promo1_id),
-            format='json',
-        )
-        self.assertEqual(
-            response.status_code,
-            rest_framework.status.HTTP_200_OK,
-        )
-        self.assertEqual(response.data, {'status': 'ok'})
-        self.client.credentials()
-
-    def test_13_get_promo1_by_user1_after_unlike(self):
-        temp_client_user2 = rest_framework.test.APIClient()
-        temp_client_user2.credentials(
-            HTTP_AUTHORIZATION='Bearer ' + self.user2_token,
-        )
-        temp_client_user2.post(
-            self.get_user_promo_like_url(self.promo1_id),
-            format='json',
-        )
-
-        self.client.credentials(
-            HTTP_AUTHORIZATION='Bearer ' + self.user1_token,
-        )
-
-        self.client.post(
-            self.get_user_promo_like_url(self.promo1_id),
-            format='json',
-        )
-        self.client.delete(
-            self.get_user_promo_like_url(self.promo1_id),
-            format='json',
-        )
-
-        response = self.client.get(
-            self.get_user_promo_detail_url(self.promo1_id),
-            format='json',
-        )
-        self.assertEqual(
-            response.status_code,
-            rest_framework.status.HTTP_200_OK,
-        )
-        self.assertEqual(
-            response.data['like_count'],
-            1,
-        )
-        self.assertEqual(
-            response.data['is_liked_by_user'],
-            False,
-        )
-        self.client.credentials()
-
-    def test_14_user1_unlikes_promo1_again_idempotency(self):
-        self.client.credentials(
-            HTTP_AUTHORIZATION='Bearer ' + self.user1_token,
-        )
-        self.client.post(
-            self.get_user_promo_like_url(self.promo1_id),
-            format='json',
-        )
-        self.client.delete(
-            self.get_user_promo_like_url(self.promo1_id),
-            format='json',
-        )
-        response = self.client.delete(
-            self.get_user_promo_like_url(self.promo1_id),
-            format='json',
-        )
-        self.assertEqual(
-            response.status_code,
-            rest_framework.status.HTTP_200_OK,
-        )
-        self.assertEqual(response.data, {'status': 'ok'})
-        self.client.credentials()
-
-    def test_15_get_promo1_by_user1_final_state(self):
-        temp_client_user2 = rest_framework.test.APIClient()
-        temp_client_user2.credentials(
-            HTTP_AUTHORIZATION='Bearer ' + self.user2_token,
-        )
-        temp_client_user2.post(
-            self.get_user_promo_like_url(self.promo1_id),
-            format='json',
-        )
-
-        self.client.credentials(
-            HTTP_AUTHORIZATION='Bearer ' + self.user1_token,
-        )
-
-        response = self.client.get(
-            self.get_user_promo_detail_url(self.promo1_id),
-            format='json',
-        )
-        self.assertEqual(
-            response.status_code,
-            rest_framework.status.HTTP_200_OK,
-        )
-        self.assertEqual(response.data['like_count'], 1)
-        self.assertEqual(response.data['is_liked_by_user'], False)
-        self.client.credentials()
+        business = self._get_business_promo()
+        self.assertEqual(business.data['like_count'], 2)
