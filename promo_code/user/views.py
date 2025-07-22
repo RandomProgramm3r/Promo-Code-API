@@ -1,8 +1,6 @@
 import django.db.models
 import django.db.transaction
 import django.shortcuts
-import django.utils.timezone
-import rest_framework.exceptions
 import rest_framework.generics
 import rest_framework.permissions
 import rest_framework.response
@@ -11,10 +9,8 @@ import rest_framework.views
 import rest_framework_simplejwt.tokens
 import rest_framework_simplejwt.views
 
-import business.constants
 import business.models
 import core.pagination
-import user.antifraud_service
 import user.models
 import user.permissions
 import user.serializers
@@ -76,25 +72,19 @@ class UserPromoDetailView(rest_framework.generics.RetrieveAPIView):
     Retrieve (GET) information about the promo without receiving a promo code.
     """
 
-    queryset = (
-        business.models.Promo.objects.select_related('company')
-        .prefetch_related(
-            'unique_codes',
-        )
-        .only(
-            'id',
-            'company__id',
-            'company__name',
-            'description',
-            'image_url',
-            'active',
-            'active_from',
-            'active_until',
-            'mode',
-            'used_count',
-            'like_count',
-            'comment_count',
-        )
+    queryset = business.models.Promo.objects.select_related('company').only(
+        'id',
+        'company__id',
+        'company__name',
+        'description',
+        'image_url',
+        'active',
+        'active_from',
+        'active_until',
+        'mode',
+        'used_count',
+        'like_count',
+        'comment_count',
     )
 
     serializer_class = user.serializers.UserPromoDetailSerializer
@@ -113,116 +103,26 @@ class UserFeedView(rest_framework.generics.ListAPIView):
 
     def get_queryset(self):
         user = self.request.user
+
         user_age = user.other.get('age')
-        user_country_raw = user.other.get('country')
-        user_country = user_country_raw.lower() if user_country_raw else None
+        user_country = user.other.get('country').lower()
+        active_filter = self.request.query_params.get('active')
 
-        queryset = business.models.Promo.objects.select_related('company')
-
-        today_utc = django.utils.timezone.now().date()
-
-        q_active_time = (
-            django.db.models.Q(active_from__lte=today_utc)
-            | django.db.models.Q(active_from__isnull=True)
-        ) & (
-            django.db.models.Q(active_until__gte=today_utc)
-            | django.db.models.Q(active_until__isnull=True)
+        return business.models.Promo.objects.get_feed_for_user(
+            user,
+            active_filter=active_filter,
+            user_country=user_country,
+            user_age=user_age,
         )
-
-        q_common_active = django.db.models.Q(
-            mode=business.constants.PROMO_MODE_COMMON,
-            used_count__lt=django.db.models.F('max_count'),
-        )
-
-        has_available_unique_codes = business.models.PromoCode.objects.filter(
-            promo=django.db.models.OuterRef('pk'),
-            is_used=False,
-        )
-
-        queryset = queryset.annotate(
-            _has_available_unique_codes=django.db.models.Exists(
-                has_available_unique_codes,
-            ),
-        )
-        q_unique_active = django.db.models.Q(
-            mode=business.constants.PROMO_MODE_UNIQUE,
-            _has_available_unique_codes=True,
-        )
-
-        q_is_active_by_rules = q_active_time & (
-            q_common_active | q_unique_active
-        )
-
-        q_target_empty = django.db.models.Q(target={})
-
-        q_country_target_matches = django.db.models.Q()
-        if user_country:
-            q_country_target_matches = django.db.models.Q(
-                target__country__iexact=user_country,
-            )
-
-        q_country_target_not_set_or_empty = ~django.db.models.Q(
-            target__has_key='country',
-        ) | django.db.models.Q(target__country__isnull=True)
-        q_user_meets_country_target = (
-            q_country_target_matches | q_country_target_not_set_or_empty
-        )
-
-        q_age_target_not_set = ~django.db.models.Q(
-            target__has_key='age_from',
-        ) & ~django.db.models.Q(target__has_key='age_until')
-        q_user_meets_age_target = q_age_target_not_set
-
-        if user_age is not None:
-            q_age_from_ok = (
-                ~django.db.models.Q(target__has_key='age_from')
-                | django.db.models.Q(target__age_from__isnull=True)
-                | django.db.models.Q(target__age_from__lte=user_age)
-            )
-            q_age_until_ok = (
-                ~django.db.models.Q(target__has_key='age_until')
-                | django.db.models.Q(target__age_until__isnull=True)
-                | django.db.models.Q(target__age_until__gte=user_age)
-            )
-            q_user_age_in_defined_range = q_age_from_ok & q_age_until_ok
-            q_user_meets_age_target = (
-                q_age_target_not_set | q_user_age_in_defined_range
-            )
-
-        q_user_is_targeted = q_target_empty | (
-            q_user_meets_country_target & q_user_meets_age_target
-        )
-
-        queryset = queryset.filter(q_user_is_targeted)
-
-        active_param_str = self.request.query_params.get('active')
-        if active_param_str is not None:
-            active_param_bool = active_param_str.lower() == 'true'
-            if active_param_bool:
-                queryset = queryset.filter(q_is_active_by_rules)
-            else:
-                queryset = queryset.exclude(q_is_active_by_rules)
-
-        return queryset.order_by('-created_at')
 
     def filter_queryset(self, queryset):
         queryset = super().filter_queryset(queryset)
-
         category_param = self.request.query_params.get('category')
+
         if category_param:
-            category_param = category_param.lower()
-        if category_param:
-            filtered_pks = []
-            for promo in queryset:
-                target_categories = promo.target.get('categories')
-                if not isinstance(target_categories, list):
-                    continue
-                if any(
-                    cat_name.lower() == category_param
-                    for cat_name in target_categories
-                ):
-                    filtered_pks.append(promo.pk)
-            queryset = queryset.filter(pk__in=filtered_pks)
+            needle = f'"{category_param.lower()}"'
+            queryset = queryset.filter(target__categories__icontains=needle)
+
         return queryset
 
     def list(self, request, *args, **kwargs):
@@ -288,7 +188,20 @@ class UserPromoLikeView(rest_framework.views.APIView):
             )
 
 
-class PromoCommentListCreateView(rest_framework.generics.ListCreateAPIView):
+class PromoObjectMixin:
+    """Mixin for retrieving the Promo object and saving it to self.promo"""
+
+    def dispatch(self, request, *args, **kwargs):
+        self.promo = django.shortcuts.get_object_or_404(
+            business.models.Promo.objects.select_for_update(),
+            pk=self.kwargs.get('promo_id'),
+        )
+        return super().dispatch(request, *args, **kwargs)
+
+
+class PromoCommentListCreateView(
+    PromoObjectMixin, rest_framework.generics.ListCreateAPIView,
+):
     permission_classes = [rest_framework.permissions.IsAuthenticated]
 
     pagination_class = core.pagination.CustomLimitOffsetPagination
@@ -299,28 +212,14 @@ class PromoCommentListCreateView(rest_framework.generics.ListCreateAPIView):
         return user.serializers.CommentSerializer
 
     def get_queryset(self):
-        promo_id = self.kwargs.get('promo_id')
-        try:
-            promo = business.models.Promo.objects.get(pk=promo_id)
-        except business.models.Promo.DoesNotExist:
-            raise rest_framework.exceptions.NotFound(detail='Promo not found.')
-
         return user.models.PromoComment.objects.filter(
-            promo=promo,
+            promo=self.promo,
         ).select_related('author')
 
     def perform_create(self, serializer):
-        promo_id = self.kwargs.get('promo_id')
-        try:
-            promo = business.models.Promo.objects.get(pk=promo_id)
-        except business.models.Promo.DoesNotExist:
-            raise rest_framework.exceptions.ValidationError(
-                {'promo_id': 'Promo not found.'},
-            )
-
-        serializer.save(author=self.request.user, promo=promo)
-        promo.comment_count = django.db.models.F('comment_count') + 1
-        promo.save(update_fields=['comment_count'])
+        serializer.save(author=self.request.user, promo=self.promo)
+        self.promo.comment_count = django.db.models.F('comment_count') + 1
+        self.promo.save(update_fields=['comment_count'])
 
     def create(self, request, *args, **kwargs):
         create_serializer = self.get_serializer(data=request.data)
@@ -346,6 +245,7 @@ class PromoCommentListCreateView(rest_framework.generics.ListCreateAPIView):
 
 
 class PromoCommentDetailView(
+    PromoObjectMixin,
     rest_framework.generics.RetrieveUpdateDestroyAPIView,
 ):
     permission_classes = [
@@ -362,13 +262,8 @@ class PromoCommentDetailView(
         return user.serializers.CommentSerializer
 
     def get_queryset(self):
-        promo_id = self.kwargs.get('promo_id')
-        try:
-            promo = business.models.Promo.objects.get(pk=promo_id)
-        except business.models.Promo.DoesNotExist:
-            raise rest_framework.exceptions.NotFound(detail='Promo not found.')
         return user.models.PromoComment.objects.filter(
-            promo=promo,
+            promo=self.promo,
         ).select_related('author')
 
     def update(self, request, *args, **kwargs):
