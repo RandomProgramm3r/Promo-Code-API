@@ -200,7 +200,8 @@ class PromoObjectMixin:
 
 
 class PromoCommentListCreateView(
-    PromoObjectMixin, rest_framework.generics.ListCreateAPIView,
+    PromoObjectMixin,
+    rest_framework.generics.ListCreateAPIView,
 ):
     permission_classes = [rest_framework.permissions.IsAuthenticated]
 

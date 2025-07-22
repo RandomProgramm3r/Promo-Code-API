@@ -54,7 +54,11 @@ class PromoManager(django.db.models.Manager):
         return self.with_related().filter(company=user)
 
     def get_feed_for_user(
-        self, user, active_filter=None, user_country=None, user_age=None,
+        self,
+        user,
+        active_filter=None,
+        user_country=None,
+        user_age=None,
     ):
         """
         Retrieve a queryset of Promo objects for a given user, filtered
@@ -94,7 +98,8 @@ class PromoManager(django.db.models.Manager):
             used_count__lt=django.db.models.F('max_count'),
         )
         unique = django.db.models.Q(
-            mode=business.constants.PROMO_MODE_UNIQUE, _has_unique_codes=True,
+            mode=business.constants.PROMO_MODE_UNIQUE,
+            _has_unique_codes=True,
         )
 
         return qt & tu & (common | unique)
@@ -105,7 +110,8 @@ class PromoManager(django.db.models.Manager):
         for each promo.
         """
         subq = business.models.PromoCode.objects.filter(
-            promo=django.db.models.OuterRef('pk'), is_used=False,
+            promo=django.db.models.OuterRef('pk'),
+            is_used=False,
         )
         return django.db.models.Exists(subq)
 
