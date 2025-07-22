@@ -14,6 +14,7 @@ import core.pagination
 import user.models
 import user.permissions
 import user.serializers
+import user.services
 
 
 class UserSignUpView(
@@ -296,138 +297,38 @@ class PromoCommentDetailView(
 
 
 class PromoActivateView(rest_framework.views.APIView):
+    """
+    Activates a promo code for the user.
+    All business logic is encapsulated in PromoActivationService.
+    """
+
     permission_classes = [rest_framework.permissions.IsAuthenticated]
-    allowed_methods = ['post', 'options', 'head']
-
-    def _validate_targeting(self, user_, promo):
-        user_age = user_.other.get('age')
-        user_country = user_.other.get('country').lower()
-        target = promo.target
-
-        if not target:
-            return None
-
-        if target.get('country') and user_country != target['country'].lower():
-            return rest_framework.response.Response(
-                {'error': 'Targeting mismatch: country.'},
-                status=rest_framework.status.HTTP_403_FORBIDDEN,
-            )
-        if target.get('age_from') and (
-            user_age is None or user_age < target['age_from']
-        ):
-            return rest_framework.response.Response(
-                {'error': 'Targeting mismatch: age.'},
-                status=rest_framework.status.HTTP_403_FORBIDDEN,
-            )
-        if target.get('age_until') and (
-            user_age is None or user_age > target['age_until']
-        ):
-            return rest_framework.response.Response(
-                {'error': 'Targeting mismatch: age.'},
-                status=rest_framework.status.HTTP_403_FORBIDDEN,
-            )
-        return None
-
-    def _validate_is_active(self, promo):
-        if not promo.active or not promo.is_active:
-            return rest_framework.response.Response(
-                {'error': 'Promo is not active.'},
-                status=rest_framework.status.HTTP_403_FORBIDDEN,
-            )
-        return None
-
-    def _validate_antifraud(self, user_, promo):
-        antifraud_response = (
-            user.antifraud_service.antifraud_service.get_verdict(
-                user_.email,
-                str(promo.id),
-            )
-        )
-        if not antifraud_response.get('ok'):
-            return rest_framework.response.Response(
-                {'error': 'Activation forbidden by anti-fraud system.'},
-                status=rest_framework.status.HTTP_403_FORBIDDEN,
-            )
-        return None
-
-    def _activate_code(self, user_, promo):
-        try:
-            with django.db.transaction.atomic():
-                promo_for_update = (
-                    business.models.Promo.objects.select_for_update().get(
-                        id=promo.id,
-                    )
-                )
-                promo_code_value = None
-
-                if (
-                    promo_for_update.mode
-                    == business.constants.PROMO_MODE_COMMON
-                ):
-                    if (
-                        promo_for_update.used_count
-                        < promo_for_update.max_count
-                    ):
-                        promo_for_update.used_count += 1
-                        promo_for_update.save(update_fields=['used_count'])
-                        promo_code_value = promo_for_update.promo_common
-                    else:
-                        raise ValueError('No common codes left.')
-
-                elif (
-                    promo_for_update.mode
-                    == business.constants.PROMO_MODE_UNIQUE
-                ):
-                    unique_code = promo_for_update.unique_codes.filter(
-                        is_used=False,
-                    ).first()
-                    if unique_code:
-                        unique_code.is_used = True
-                        unique_code.used_at = django.utils.timezone.now()
-                        unique_code.save(update_fields=['is_used', 'used_at'])
-                        promo_code_value = unique_code.code
-                    else:
-                        raise ValueError('No unique codes left.')
-
-                if promo_code_value:
-                    user.models.PromoActivationHistory.objects.create(
-                        user=user_,
-                        promo=promo,
-                    )
-                    serializer = user.serializers.PromoActivationSerializer(
-                        data={'promo': promo_code_value},
-                    )
-                    serializer.is_valid(raise_exception=True)
-                    return rest_framework.response.Response(
-                        serializer.data,
-                        status=rest_framework.status.HTTP_200_OK,
-                    )
-
-                raise ValueError('Promo code could not be activated.')
-
-        except ValueError as e:
-            return rest_framework.response.Response(
-                {'error': str(e)},
-                status=rest_framework.status.HTTP_403_FORBIDDEN,
-            )
 
     def post(self, request, id):
         promo = django.shortcuts.get_object_or_404(
             business.models.Promo,
             id=id,
         )
-        user_ = request.user
 
-        if (response := self._validate_targeting(user_, promo)) is not None:
-            return response
+        service = user.services.PromoActivationService(
+            user=request.user,
+            promo=promo,
+        )
 
-        if (response := self._validate_is_active(promo)) is not None:
-            return response
+        try:
+            promo_code = service.activate()
 
-        if (response := self._validate_antifraud(user_, promo)) is not None:
-            return response
+            serializer = user.serializers.PromoActivationSerializer(
+                data={'promo': promo_code},
+            )
+            serializer.is_valid(raise_exception=True)
+            return rest_framework.response.Response(serializer.data)
 
-        return self._activate_code(user_, promo)
+        except user.services.PromoActivationError as e:
+            return rest_framework.response.Response(
+                {'error': e.detail},
+                status=e.status_code,
+            )
 
 
 class PromoHistoryView(rest_framework.generics.ListAPIView):
