@@ -38,8 +38,9 @@ class UppercaseValidator:
     def get_help_text(self):
         return _(
             'Your password must contain at least %(min_count)d uppercase '
-            'letter.' if self.min_count == 1 else
-            'Your password must contain at least %(min_count)d uppercase '
+            'letter.'
+            if self.min_count == 1
+            else 'Your password must contain at least %(min_count)d uppercase '
             'letters.',
         ) % {
             'min_count': self.min_count,
@@ -79,8 +80,9 @@ class LowercaseValidator:
     def get_help_text(self):
         return _(
             'Your password must contain at least %(min_count)d lowercase '
-            'letter.' if self.min_count == 1 else
-            'Your password must contain at least %(min_count)d lowercase '
+            'letter.'
+            if self.min_count == 1
+            else 'Your password must contain at least %(min_count)d lowercase '
             'letters.',
         ) % {
             'min_count': self.min_count,
@@ -115,8 +117,8 @@ class NumericValidator:
     def get_help_text(self):
         return _(
             'Your password must contain at least %(min_count)d digit.'
-            if self.min_count == 1 else
-            'Your password must contain at least %(min_count)d digits.',
+            if self.min_count == 1
+            else 'Your password must contain at least %(min_count)d digits.',
         ) % {
             'min_count': self.min_count,
         }
@@ -128,9 +130,7 @@ class SpecialCharacterValidator:
     characters.
     """
 
-    DEFAULT_SPECIAL_CHARS = (
-        r'[!@#$%^&*()_+\-\=\[\]{};\':",./<>?`~\\]'
-    )
+    DEFAULT_SPECIAL_CHARS = r'[!@#$%^&*()_+\-\=\[\]{};\':",./<>?`~\\]'
 
     def __init__(self, min_count=1, special_chars=None):
         self.min_count = min_count
@@ -158,8 +158,9 @@ class SpecialCharacterValidator:
     def get_help_text(self):
         return _(
             'Your password must contain at least %(min_count)d special '
-            'character.' if self.min_count == 1 else
-            'Your password must contain at least %(min_count)d special '
+            'character.'
+            if self.min_count == 1
+            else 'Your password must contain at least %(min_count)d special '
             'characters.',
         ) % {
             'min_count': self.min_count,
@@ -186,4 +187,3 @@ class AsciiValidator:
             'Your password must only contain standard English letters, '
             'digits, and symbols.',
         )
-
