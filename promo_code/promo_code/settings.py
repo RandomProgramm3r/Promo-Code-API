@@ -178,26 +178,22 @@ AUTH_PASSWORD_VALIDATORS = [
         '.NumericPasswordValidator',
     },
     {
-        'NAME': 'promo_code.validators.ASCIIOnlyPasswordValidator',
+        'NAME': 'promo_code.validators.AsciiValidator',
     },
     {
-        'NAME': 'promo_code.validators.SpecialCharacterPasswordValidator',
-        'OPTIONS': {'min_count': 1},
+        'NAME': 'promo_code.validators.SpecialCharacterValidator',
+        'OPTIONS': {'special_chars': '[@$!%*?&]'},
     },
     {
-        'NAME': 'promo_code.validators.NumericPasswordValidator',
-        'OPTIONS': {'min_count': 1},
+        'NAME': 'promo_code.validators.NumericValidator',
     },
     {
-        'NAME': 'promo_code.validators.LowercaseLatinLetterPasswordValidator',
-        'OPTIONS': {'min_count': 1},
+        'NAME': 'promo_code.validators.LowercaseValidator',
     },
     {
-        'NAME': 'promo_code.validators.UppercaseLatinLetterPasswordValidator',
-        'OPTIONS': {'min_count': 1},
+        'NAME': 'promo_code.validators.UppercaseValidator',
     },
 ]
-
 
 PASSWORD_HASHERS = [
     'django.contrib.auth.hashers.Argon2PasswordHasher',
