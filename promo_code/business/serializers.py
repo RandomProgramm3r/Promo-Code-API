@@ -70,11 +70,6 @@ class CompanySignInSerializer(rest_framework.serializers.Serializer):
         email = attrs.get('email')
         password = attrs.get('password')
 
-        if not email or not password:
-            raise rest_framework.serializers.ValidationError(
-                'Both email and password are required.',
-            )
-
         try:
             company = business.models.Company.objects.get(email=email)
         except business.models.Company.DoesNotExist:
@@ -151,24 +146,12 @@ class MultiCountryField(rest_framework.serializers.ListField):
         super().__init__(**kwargs)
 
     def to_internal_value(self, data):
-        if not data or not isinstance(data, list):
-            raise rest_framework.serializers.ValidationError(
-                'At least one country must be specified.',
-            )
-
-        # (&country=us,fr)
-        if len(data) == 1 and ',' in data[0]:
-            countries_str = data[0]
-            if '' in [s.strip() for s in countries_str.split(',')]:
-                raise rest_framework.serializers.ValidationError(
-                    'Invalid country format.',
-                )
-            data = [country.strip() for country in countries_str.split(',')]
-
-        if any(not item for item in data):
-            raise rest_framework.serializers.ValidationError(
-                'Empty value for country is not allowed.',
-            )
+        if (
+            isinstance(data, list)
+            and len(data) == 1
+            and isinstance(data[0], str)
+        ):
+            data = [item.strip() for item in data[0].split(',')]
 
         return super().to_internal_value(data)
 

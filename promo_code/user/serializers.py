@@ -60,12 +60,6 @@ class SignInSerializer(
         email = attrs.get('email')
         password = attrs.get('password')
 
-        if not email or not password:
-            raise rest_framework.exceptions.ValidationError(
-                {'detail': 'Both email and password are required'},
-                code='required',
-            )
-
         user = django.contrib.auth.authenticate(
             request=self.context.get('request'),
             email=email,
@@ -153,8 +147,9 @@ class UserProfileSerializer(core.serializers.BaseUserSerializer):
 
         user_type = instance.__class__.__name__.lower()
         token_version = getattr(instance, 'token_version', None)
-        cache_key = f'auth_instance_{user_type}_{instance.id}_v{token_version}'
-        django.core.cache.cache.delete(cache_key)
+        django.core.cache.cache.delete(
+            f'auth_instance_{user_type}_{instance.id}_v{token_version}',
+        )
 
 
 class UserFeedQuerySerializer(

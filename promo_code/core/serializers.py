@@ -161,16 +161,8 @@ class BaseCompanyPromoSerializer(rest_framework.serializers.ModelSerializer):
 
         if mode == business.constants.PROMO_MODE_COMMON:
             self._validate_common(data)
-        elif mode == business.constants.PROMO_MODE_UNIQUE:
-            self._validate_unique(data)
-        elif mode is None:
-            raise rest_framework.serializers.ValidationError(
-                {'mode': 'This field is required.'},
-            )
         else:
-            raise rest_framework.serializers.ValidationError(
-                {'mode': 'Invalid mode.'},
-            )
+            self._validate_unique(data)
 
         return data
 
@@ -374,30 +366,17 @@ class BaseUserPromoSerializer(rest_framework.serializers.ModelSerializer):
         """
         Checks whether the current user has liked this promo.
         """
-        request = self.context.get('request')
-        if (
-            request
-            and hasattr(request, 'user')
-            and request.user.is_authenticated
-        ):
-            return user.models.PromoLike.objects.filter(
-                promo=obj,
-                user=request.user,
-            ).exists()
-        return False
+        request = self.context['request']
+        return user.models.PromoLike.objects.filter(
+            promo=obj,
+            user=request.user,
+        ).exists()
 
     def get_is_activated_by_user(self, obj: business.models.Promo) -> bool:
         """
         Checks whether the current user has activated this promo code.
         """
         request = self.context.get('request')
-
-        if not (
-            request
-            and hasattr(request, 'user')
-            and request.user.is_authenticated
-        ):
-            return False
 
         return user.models.PromoActivationHistory.objects.filter(
             promo=obj,

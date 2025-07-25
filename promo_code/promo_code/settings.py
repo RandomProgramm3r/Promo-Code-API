@@ -180,20 +180,20 @@ AUTH_PASSWORD_VALIDATORS = [
         '.NumericPasswordValidator',
     },
     {
-        'NAME': 'promo_code.validators.AsciiValidator',
+        'NAME': 'user.validators.AsciiValidator',
     },
     {
-        'NAME': 'promo_code.validators.SpecialCharacterValidator',
+        'NAME': 'user.validators.SpecialCharacterValidator',
         'OPTIONS': {'special_chars': '[@$!%*?&]'},
     },
     {
-        'NAME': 'promo_code.validators.NumericValidator',
+        'NAME': 'user.validators.NumericValidator',
     },
     {
-        'NAME': 'promo_code.validators.LowercaseValidator',
+        'NAME': 'user.validators.LowercaseValidator',
     },
     {
-        'NAME': 'promo_code.validators.UppercaseValidator',
+        'NAME': 'user.validators.UppercaseValidator',
     },
 ]
 

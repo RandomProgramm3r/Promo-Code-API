@@ -102,10 +102,7 @@ class Promo(django.db.models.Model):
 
         if self.mode == business.constants.PROMO_MODE_UNIQUE:
             return self.unique_codes.filter(is_used=False).exists()
-        if self.mode == business.constants.PROMO_MODE_COMMON:
-            return self.used_count < self.max_count
-
-        return True
+        return self.used_count < self.max_count
 
     @property
     def get_like_count(self) -> int:
@@ -122,10 +119,8 @@ class Promo(django.db.models.Model):
         return self.used_count
 
     @property
-    def get_available_unique_codes(self) -> list[str] | None:
-        if self.mode == business.constants.PROMO_MODE_UNIQUE:
-            return [c.code for c in self.unique_codes.filter(is_used=False)]
-        return None
+    def get_available_unique_codes(self) -> list[str]:
+        return [c.code for c in self.unique_codes.filter(is_used=False)]
 
 
 class PromoCode(django.db.models.Model):
