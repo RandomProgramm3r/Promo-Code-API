@@ -142,11 +142,13 @@ DATABASES = {
         'PORT': os.getenv('POSTGRES_PORT', '5432'),
     },
 }
+REDIS_HOST = os.getenv('REDIS_HOST', 'redis')
+REDIS_PORT = os.getenv('REDIS_PORT', '6379')
 
 CACHES = {
     'default': {
         'BACKEND': 'django_redis.cache.RedisCache',
-        'LOCATION': os.getenv('REDIS_URL', 'redis://127.0.0.1:6379/0'),
+        'LOCATION': f'redis://{REDIS_HOST}:{REDIS_PORT}/0',
         'OPTIONS': {
             'CLIENT_CLASS': 'django_redis.client.DefaultClient',
         },
@@ -178,20 +180,20 @@ AUTH_PASSWORD_VALIDATORS = [
         '.NumericPasswordValidator',
     },
     {
-        'NAME': 'promo_code.validators.AsciiValidator',
+        'NAME': 'user.validators.AsciiValidator',
     },
     {
-        'NAME': 'promo_code.validators.SpecialCharacterValidator',
+        'NAME': 'user.validators.SpecialCharacterValidator',
         'OPTIONS': {'special_chars': '[@$!%*?&]'},
     },
     {
-        'NAME': 'promo_code.validators.NumericValidator',
+        'NAME': 'user.validators.NumericValidator',
     },
     {
-        'NAME': 'promo_code.validators.LowercaseValidator',
+        'NAME': 'user.validators.LowercaseValidator',
     },
     {
-        'NAME': 'promo_code.validators.UppercaseValidator',
+        'NAME': 'user.validators.UppercaseValidator',
     },
 ]
 

@@ -122,32 +122,29 @@ class PromoManager(django.db.models.Manager):
         """
         empty = django.db.models.Q(target={})
 
-        if country:
-            match_country = django.db.models.Q(target__country__iexact=country)
-        else:
-            match_country = django.db.models.Q()
+        match_country = (
+            django.db.models.Q(target__country__iexact=country)
+            if country
+            else django.db.models.Q()
+        )
+
         no_country = ~django.db.models.Q(
             target__has_key='country',
         ) | django.db.models.Q(target__country__isnull=True)
+
         country_ok = match_country | no_country
 
-        no_age_limits = ~django.db.models.Q(
-            target__has_key='age_from',
-        ) & ~django.db.models.Q(target__has_key='age_until')
-        if age is None:
-            age_ok = no_age_limits
-        else:
-            from_ok = (
-                ~django.db.models.Q(target__has_key='age_from')
-                | django.db.models.Q(target__age_from__isnull=True)
-                | django.db.models.Q(target__age_from__lte=age)
-            )
-            until_ok = (
-                ~django.db.models.Q(target__has_key='age_until')
-                | django.db.models.Q(target__age_until__isnull=True)
-                | django.db.models.Q(target__age_until__gte=age)
-            )
-            age_ok = no_age_limits | (from_ok & until_ok)
+        from_ok = (
+            ~django.db.models.Q(target__has_key='age_from')
+            | django.db.models.Q(target__age_from__isnull=True)
+            | django.db.models.Q(target__age_from__lte=age)
+        )
+        until_ok = (
+            ~django.db.models.Q(target__has_key='age_until')
+            | django.db.models.Q(target__age_until__isnull=True)
+            | django.db.models.Q(target__age_until__gte=age)
+        )
+        age_ok = from_ok & until_ok
 
         return empty | (country_ok & age_ok)
 

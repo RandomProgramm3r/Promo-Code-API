@@ -78,12 +78,6 @@ class User(
     def __str__(self):
         return self.email
 
-    def save(self, *args, **kwargs):
-        if not self.pk:
-            self.last_login = django.utils.timezone.now()
-
-        super().save(*args, **kwargs)
-
 
 class PromoLike(django.db.models.Model):
     id = django.db.models.UUIDField(
