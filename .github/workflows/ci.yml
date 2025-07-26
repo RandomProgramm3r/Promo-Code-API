@@ -49,9 +49,10 @@ jobs:
           POSTGRES_USERNAME=${{ secrets.POSTGRES_USER }}
           POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
           POSTGRES_HOST=db
-          ANTIFRAUD_INTERNAL_PORT=8081
-          ANTIFRAUD_EXTERNAL_PORT=8081
-          ANTIFRAUD_CACHE_MS=1000
+          ANTIFRAUD_INTERNAL_PORT=9090
+          ANTIFRAUD_EXTERNAL_PORT=9090
+          ANTIFRAUD_CACHE_MS=5000
+          ANTIFRAUD_ADDRESS=http://antifraud:9090
           EOF
 
       - name: Build and run Docker containers
