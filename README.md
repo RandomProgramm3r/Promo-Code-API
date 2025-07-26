@@ -129,7 +129,7 @@ All project configuration is managed through an `.env` file.
 * `ANTIFRAUD_ADDRESS`: The address (domain or IP) and port of the anti-fraud service API (e.g., `http://antifraud:9090`).
 
 
-##  API Specification
+## 📄 API Specification
 
 The application's REST API is implemented strictly according to the provided OpenAPI specification file, `api.yml`.
 
