@@ -9,3 +9,4 @@ pycountry==24.6.1
 python-dotenv==1.0.1
 requests==2.32.4
 parameterized==0.9.0
+coverage==7.9.2
