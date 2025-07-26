@@ -53,8 +53,6 @@ jobs:
           echo "ANTIFRAUD_INTERNAL_PORT=8081" >> .env
           echo "ANTIFRAUD_EXTERNAL_PORT=8081" >> .env
           echo "ANTIFRAUD_CACHE_MS=1000" >> .env
-      - name: Debug .env file
-        run: cat .env
 
       - name: Build and run Docker containers
         run: docker compose up -d --build
