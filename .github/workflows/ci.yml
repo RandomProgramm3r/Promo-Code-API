@@ -42,17 +42,17 @@ jobs:
 
       - name: Create .env file for Docker
         run: |
-          echo "DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1,0.0.0.0" >> .env
-          echo "DJANGO_SECRET_KEY=${{ secrets.DJANGO_SECRET_KEY }}" >> .env
-
-          echo "POSTGRES_DATABASE=${{ secrets.POSTGRES_DB }}" >> .env #
-          echo "POSTGRES_USERNAME=${{ secrets.POSTGRES_USER }}" >> .env #
-          echo "POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}" >> .env
-          echo "POSTGRES_HOST=db" >> .env
-          
-          echo "ANTIFRAUD_INTERNAL_PORT=8081" >> .env
-          echo "ANTIFRAUD_EXTERNAL_PORT=8081" >> .env
-          echo "ANTIFRAUD_CACHE_MS=1000" >> .env
+          cat <<EOF >> .env
+          DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1,0.0.0.0
+          DJANGO_SECRET_KEY=${{ secrets.DJANGO_SECRET_KEY }}
+          POSTGRES_DATABASE=${{ secrets.POSTGRES_DB }}
+          POSTGRES_USERNAME=${{ secrets.POSTGRES_USER }}
+          POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
+          POSTGRES_HOST=db
+          ANTIFRAUD_INTERNAL_PORT=8081
+          ANTIFRAUD_EXTERNAL_PORT=8081
+          ANTIFRAUD_CACHE_MS=1000
+          EOF
 
       - name: Build and run Docker containers
         run: docker compose up -d --build
