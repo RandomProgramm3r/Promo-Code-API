@@ -53,14 +53,8 @@ jobs:
           echo "ANTIFRAUD_EXTERNAL_PORT=8081" >> .env
           echo "ANTIFRAUD_CACHE_MS=1000" >> .env
 
-      - name: Install Docker Compose v1
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y docker-compose-plugin
-          docker-compose version
-
       - name: Build and run Docker containers
-        run: docker-compose up -d --build
+        run: docker compose up -d --build
 
       - name: Wait for services to be healthy
         run: |
@@ -69,7 +63,7 @@ jobs:
 
       - name: Run tests and generate coverage report 🛡️
         run: >
-          docker-compose exec -T web sh -c
+          docker compose exec -T web sh -c
           "coverage run manage.py test && coverage xml"
 
       - name: Upload coverage to Codecov 🚀
