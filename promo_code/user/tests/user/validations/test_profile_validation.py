@@ -20,6 +20,21 @@ class ProfileAPITestCase(user.tests.user.base.BaseUserTestCase):
             format='json',
         )
         token = response.data.get('access')
+
+        self.second_user_email = 'another_user@example.com'
+        second_signup_data = {
+            'name': 'Bill',
+            'surname': 'Gates',
+            'email': self.second_user_email,
+            'password': 'MicrosoftRules2020!',
+            'other': {'age': 65, 'country': 'us'},
+        }
+
+        self.client.post(
+            self.user_signup_url,
+            second_signup_data,
+            format='json',
+        )
         self.client.credentials(HTTP_AUTHORIZATION='Bearer ' + token)
 
     def test_update_profile_empty_name_and_surname(self):
@@ -91,3 +106,16 @@ class ProfileAPITestCase(user.tests.user.base.BaseUserTestCase):
             'other': {'age': 48, 'country': 'gb'},
         }
         self.assertEqual(response.json(), expected)
+
+    def test_patch_profile_update_email_to_existing_fails(self):
+        payload = {'email': self.second_user_email}
+        response = self.client.patch(
+            self.user_profile_url,
+            payload,
+            format='json',
+        )
+        self.assertEqual(
+            response.status_code,
+            rest_framework.status.HTTP_400_BAD_REQUEST,
+        )
+        self.assertIn('email', response.data)
