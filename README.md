@@ -2,7 +2,7 @@
 
 [![CI/CD](https://github.com/RandomProgramm3r/Promo-Code-API/actions/workflows/linting.yml/badge.svg)](https://github.com/RandomProgramm3r/Promo-Code-API/actions)
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
-[![codecov](https://codecov.io/gh/YourUsername/YourRepo/graph/badge.svg?token=YOUR_TOKEN)](https://codecov.io/gh/YourUsername/YourRepo)
+[![codecov](https://codecov.io/github/RandomProgramm3r/Promo-Code-API/graph/badge.svg?token=VNBK0FAU3Z)](https://codecov.io/github/RandomProgramm3r/Promo-Code-API)
 
 The application provides an HTTP API for companies and end-users, is integrated with an external anti-fraud service, and uses PostgreSQL and Redis for data storage and caching.
 
