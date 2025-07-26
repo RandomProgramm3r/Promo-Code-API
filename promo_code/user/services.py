@@ -79,14 +79,10 @@ class PromoActivationService:
         if target.get('country') and user_country != target['country'].lower():
             raise TargetingError('Country mismatch.')
 
-        if target.get('age_from') and (
-            user_age is None or user_age < target['age_from']
-        ):
+        if target.get('age_from') and user_age < target['age_from']:
             raise TargetingError('Age mismatch.')
 
-        if target.get('age_until') and (
-            user_age is None or user_age > target['age_until']
-        ):
+        if target.get('age_until') and user_age > target['age_until']:
             raise TargetingError('Age mismatch.')
 
     def _validate_is_active(self):
@@ -127,10 +123,7 @@ class PromoActivationService:
                         )
                         promo_locked.save(update_fields=['used_count'])
                         promo_code_value = promo_locked.promo_common
-                    else:
-                        raise PromoUnavailableError()
-
-                elif promo_locked.mode == business.constants.PROMO_MODE_UNIQUE:
+                else:
                     unique_code = promo_locked.unique_codes.filter(
                         is_used=False,
                     ).first()
@@ -139,8 +132,6 @@ class PromoActivationService:
                         unique_code.used_at = django.utils.timezone.now()
                         unique_code.save(update_fields=['is_used', 'used_at'])
                         promo_code_value = unique_code.code
-                    else:
-                        raise PromoUnavailableError()
 
                 if promo_code_value:
                     user.models.PromoActivationHistory.objects.create(
@@ -148,8 +139,6 @@ class PromoActivationService:
                         promo=promo_locked,
                     )
                     return promo_code_value
-
-                raise PromoActivationError('Invalid promotion type.')
 
         except business.models.Promo.DoesNotExist:
             raise PromoActivationError('Promo not found.')
