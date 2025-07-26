@@ -1,0 +1,12 @@
+[run]
+source = business, promo_code, user, core
+omit =
+    settings.py
+    */tests/*
+    */migrations/*
+    */__init__.py
+    manage.py
+    */apps.py
+    */urls.py
+    */wsgi.py
+    */asgi.py

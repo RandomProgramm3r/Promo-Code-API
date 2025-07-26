@@ -442,9 +442,6 @@ class TestUserPromoFeed(user.tests.user.base.BaseUserTestCase):
             response.status_code,
             rest_framework.status.HTTP_200_OK,
         )
-        for item in response.data:
-            self.assertNotIn('promo_common', item)
-            self.assertNotIn('promo_unique', item)
         self.assertEqual(response['X-Total-Count'], '6')
         self.assertEqual(response.data, [])
 
@@ -619,9 +616,7 @@ class TestUserPromoFeed(user.tests.user.base.BaseUserTestCase):
             response.status_code,
             rest_framework.status.HTTP_200_OK,
         )
-        for item in response.data:
-            self.assertNotIn('promo_common', item)
-            self.assertNotIn('promo_unique', item)
+
         self.assertEqual(response['X-Total-Count'], '0')
         self.assertEqual(response.data, [])
 
