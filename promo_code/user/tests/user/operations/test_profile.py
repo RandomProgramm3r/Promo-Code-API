@@ -145,3 +145,59 @@ class TestUserProfile(user.tests.user.base.BaseUserTestCase):
             response.status_code,
             rest_framework.status.HTTP_200_OK,
         )
+
+    def test_patch_profile_update_other(self):
+        new_other = {'age': 30, 'country': 'ca'}
+        response = self.client.patch(
+            self.user_profile_url,
+            {'other': new_other},
+            format='json',
+        )
+
+        self.assertEqual(
+            response.status_code,
+            rest_framework.status.HTTP_200_OK,
+        )
+
+        self.assertEqual(
+            response.data.get('other'),
+            new_other,
+        )
+
+        get_resp = self.client.get(self.user_profile_url, format='json')
+        self.assertEqual(
+            get_resp.status_code,
+            rest_framework.status.HTTP_200_OK,
+        )
+        self.assertEqual(
+            get_resp.data.get('other'),
+            new_other,
+        )
+
+    def test_patch_profile_update_mail(self):
+        new_email = 'new_creator@apple.com'
+        response = self.client.patch(
+            self.user_profile_url,
+            {'email': new_email},
+            format='json',
+        )
+
+        self.assertEqual(
+            response.status_code,
+            rest_framework.status.HTTP_200_OK,
+        )
+
+        self.assertEqual(
+            response.data.get('email'),
+            new_email,
+        )
+
+        get_resp = self.client.get(self.user_profile_url, format='json')
+        self.assertEqual(
+            get_resp.status_code,
+            rest_framework.status.HTTP_200_OK,
+        )
+        self.assertEqual(
+            get_resp.data.get('email'),
+            new_email,
+        )

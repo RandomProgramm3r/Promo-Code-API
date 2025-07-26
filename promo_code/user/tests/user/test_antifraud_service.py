@@ -129,3 +129,11 @@ class AntiFraudServiceTests(django.test.SimpleTestCase):
             result,
             {'ok': False, 'error': 'Anti-fraud service unavailable'},
         )
+
+    def test_calculate_cache_timeout_none_when_missing(self):
+        self.assertIsNone(
+            self.service._calculate_cache_timeout(None),
+        )
+        self.assertIsNone(
+            self.service._calculate_cache_timeout(''),
+        )
