@@ -3,7 +3,7 @@ exclude = ["migrations", "venv"]
 
 
 [lint]
-select = ["N", "F", "W", "E", "I", "Q", "TID", "COM", "C4", "ERA", "RET", "PTH", "ISC", "C90", "T20", "SIM"]
+select = ["C4","N", "F", "W", "E", "I", "Q", "TID", "COM", "C4", "ERA", "RET", "PTH", "ISC", "C90", "T20", "SIM", "FIX", "INT"]
 
 
 [format]
