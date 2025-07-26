@@ -1,0 +1,1261 @@
+openapi: "3.0.1"
+info:
+  title: Promo Code API
+  version: "1.0"
+servers:
+  - url: https://api.changeme.please/
+
+paths:
+  /ping:
+    get:
+      description: Check that your application is running and ready to receive incoming requests. The response body can be arbitrary (at your discretion); the main point is to return status code 200.
+      tags:
+        - default
+      responses:
+        "200":
+          description: "OK"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    maxLength: 30
+                    minLength: 1
+              example:
+                status: "PONG"
+
+  # B2B API
+  /business/auth/sign-up:
+    post:
+      tags:
+        - B2B
+      summary: Register a new company
+      description: |
+        Registers a new company and returns an access token.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  $ref: "#/components/schemas/CompanyNameCreate"
+                email:
+                  $ref: "#/components/schemas/Email"
+                password:
+                  $ref: "#/components/schemas/Password"
+              required:
+                - name
+                - email
+                - password
+      responses:
+        "200":
+          description: Company successfully registered.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+                    maxLength: 300
+                    description: Access token for subsequent requests.
+                    example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjMiLCJuYW1lIjoiU2FtcGxlIENvbXBhbnkiLCJpYXQiOjE2MDAwMDAwMDB9.abcdef1234567890"
+                  company_id:
+                    $ref: "#/components/schemas/CompanyId"
+        "400":
+          $ref: "#/components/responses/Response400"
+        "409":
+          $ref: "#/components/responses/EmailAlreadyRegistered"
+
+  /business/auth/sign-in:
+    post:
+      tags:
+        - B2B
+      summary: Company authentication
+      description: |
+        Sign in a company using email and password to obtain an access token. Successful authentication invalidates any previously issued tokens.
+      requestBody:
+        $ref: "#/components/requestBodies/SignIn"
+      responses:
+        "200":
+          $ref: "#/components/responses/SignIn200"
+        "400":
+          $ref: "#/components/responses/Response400"
+        "401":
+          $ref: "#/components/responses/SignIn401"
+
+  /business/promo:
+    post:
+      tags:
+        - B2B
+      summary: Create a new promo code
+      description: |
+        Creates a new promo code for the company with targeting and code type settings.
+      parameters:
+        - $ref: "#/components/parameters/AuthorizationHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PromoCreate"
+      responses:
+        "201":
+          description: Promo code successfully created.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                    description: Unique identifier of the created promo code.
+        "400":
+          $ref: "#/components/responses/Response400"
+        "401":
+          $ref: "#/components/responses/NoAuth401"
+
+    get:
+      tags:
+        - B2B
+      summary: List promo codes
+      description: |
+        Returns a list of the company's promo codes with filtering, sorting, and pagination.
+      parameters:
+        - $ref: "#/components/parameters/AuthorizationHeader"
+        - $ref: "#/components/parameters/LimitQueryParam"
+        - $ref: "#/components/parameters/OffsetQueryParam"
+        - name: sort_by
+          in: query
+          schema:
+            type: string
+            description: Sort by promo code start/end date. Defaults to creation date. Always descending. Treat missing active_from as -inf and missing active_until as +inf.
+            enum:
+              - active_from
+              - active_until
+        - name: country
+          in: query
+          schema:
+            type: array
+            items:
+              $ref: "#/components/schemas/Country"
+            description: |
+              List of target audience countries in ISO 3166-1 alpha-2 to filter promo codes. Returns codes without a region or with a region in the list.
+            example: ["lu", "fr"]
+      responses:
+        "200":
+          description: Company promo codes list with applied filters.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PromoReadOnly"
+          headers:
+            X-Total-Count:
+              $ref: "#/components/headers/XTotalCount"
+        "400":
+          $ref: "#/components/responses/Response400"
+        "401":
+          $ref: "#/components/responses/NoAuth401"
+
+  /business/promo/{id}:
+    get:
+      tags:
+        - B2B
+      summary: Get a promo code
+      description: |
+        Retrieves promo code data by its ID. A company can only fetch its own codes.
+      parameters:
+        - $ref: "#/components/parameters/AuthorizationHeader"
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Promo code retrieved successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PromoReadOnly"
+        "400":
+          $ref: "#/components/responses/Response400"
+        "401":
+          $ref: "#/components/responses/NoAuth401"
+        "403":
+          $ref: "#/components/responses/NoAccessToPromo"
+        "404":
+          $ref: "#/components/responses/PromoNotFound"
+
+    patch:
+      tags:
+        - B2B
+      summary: Edit a promo code
+      description: |
+        Updates promo code data by its ID.
+      parameters:
+        - $ref: "#/components/parameters/AuthorizationHeader"
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PromoPatch"
+      responses:
+        "200":
+          description: Promo code updated successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PromoReadOnly"
+        "400":
+          $ref: "#/components/responses/Response400"
+        "401":
+          $ref: "#/components/responses/NoAuth401"
+        "403":
+          $ref: "#/components/responses/NoAccessToPromo"
+        "404":
+          $ref: "#/components/responses/PromoNotFound"
+
+  /business/promo/{id}/stat:
+    get:
+      tags:
+        - B2B
+      summary: Get promo code statistics
+      description: |
+        Returns usage statistics for the promo code by country. Only counts activations.
+        The country summary array must be sorted lexicographically by country code (case-insensitive, convert to lowercase).
+      parameters:
+        - $ref: "#/components/parameters/AuthorizationHeader"
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Promo code statistics.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PromoStat"
+        "400":
+          $ref: "#/components/responses/Response400"
+        "401":
+          $ref: "#/components/responses/NoAuth401"
+        "403":
+          $ref: "#/components/responses/NoAccessToPromo"
+        "404":
+          $ref: "#/components/responses/PromoNotFound"
+
+  # B2C API
+  /user/auth/sign-up:
+    post:
+      tags:
+        - B2C
+      summary: Register a new user
+      description: |
+        Registers a new user and returns an access token.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserRegister"
+      responses:
+        "200":
+          description: User successfully registered.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+                    example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjMiLCJuYW1lIjoiSmFuZSBTbWl0aCIsImlhdCI6MTYwMDAwMDAwMH0.abcdef1234567890"
+        "400":
+          $ref: "#/components/responses/Response400"
+        "409":
+          $ref: "#/components/responses/EmailAlreadyRegistered"
+
+  /user/auth/sign-in:
+    post:
+      tags:
+        - B2C
+      summary: User authentication
+      description: |
+        Sign in a user using email and password to obtain an access token. Successful authentication invalidates any previously issued tokens.
+      requestBody:
+        $ref: "#/components/requestBodies/SignIn"
+      responses:
+        "200":
+          $ref: "#/components/responses/SignIn200"
+        "400":
+          $ref: "#/components/responses/Response400"
+        "401":
+          $ref: "#/components/responses/SignIn401"
+
+  /user/profile:
+    get:
+      tags:
+        - B2C
+      summary: Get user profile
+      description: |
+        Returns the current user's profile data.
+      parameters:
+        - $ref: "#/components/parameters/AuthorizationHeader"
+      responses:
+        "200":
+          description: User profile data.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "401":
+          $ref: "#/components/responses/NoAuth401"
+
+    patch:
+      tags:
+        - B2C
+      summary: Update user settings
+      description: |
+        Updates the current user's settings. If a new password is specified, subsequent authentications must use it. Changing the password does not invalidate the token.
+        Fields not provided (or set to null) will not be updated.
+      parameters:
+        - $ref: "#/components/parameters/AuthorizationHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserPatch"
+      responses:
+        "200":
+          description: Profile updated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "400":
+          $ref: "#/components/responses/Response400"
+        "401":
+          $ref: "#/components/responses/NoAuth401"
+
+  /user/feed:
+    get:
+      tags:
+        - B2C
+      summary: Get promo feed
+      description: |
+        Returns a feed of promo codes with pagination, filtering, and sorting. Only codes matching the user's targeting settings are returned. Sorted by creation date descending.
+      parameters:
+        - $ref: "#/components/parameters/AuthorizationHeader"
+        - $ref: "#/components/parameters/LimitQueryParam"
+        - $ref: "#/components/parameters/OffsetQueryParam"
+        - name: category
+          in: query
+          schema:
+            type: string
+            example: cats
+          description: Returns promos in the specified category.
+        - name: active
+          in: query
+          schema:
+            type: boolean
+            example: true
+          description: If provided, filters by the `active` status. If absent, no active filter is applied.
+      responses:
+        "200":
+          description: Promo feed.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PromoForUser"
+          headers:
+            X-Total-Count:
+              $ref: "#/components/headers/XTotalCount"
+        "400":
+          $ref: "#/components/responses/Response400"
+        "401":
+          $ref: "#/components/responses/NoAuth401"
+
+  /user/promo/{id}:
+    get:
+      tags:
+        - B2C
+      summary: View promo by ID
+      description: |
+        Returns the promo code with the specified ID.
+      parameters:
+        - $ref: "#/components/parameters/AuthorizationHeader"
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Promo details.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PromoForUser"
+        "400":
+          $ref: "#/components/responses/Response400"
+        "401":
+          $ref: "#/components/responses/NoAuth401"
+        "404":
+          $ref: "#/components/responses/PromoNotFound"
+
+  /user/promo/{id}/like:
+    post:
+      tags:
+        - B2C
+      summary: Like a promo code
+      description: |
+        Adds a like to the specified promo code. Repeated likes have no effect; a successful response is returned.
+      parameters:
+        - $ref: "#/components/parameters/AuthorizationHeader"
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Like added successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "ok"
+        "400":
+          $ref: "#/components/responses/Response400"
+        "401":
+          $ref: "#/components/responses/NoAuth401"
+        "404":
+          $ref: "#/components/responses/PromoNotFound"
+
+    delete:
+      tags:
+        - B2C
+      summary: Unlike a promo code
+      description: |
+        Removes a like from the specified promo code. If no like exists, a successful response is returned.
+      parameters:
+        - $ref: "#/components/parameters/AuthorizationHeader"
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Like removed successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "ok"
+        "400":
+          $ref: "#/components/responses/Response400"
+        "401":
+          $ref: "#/components/responses/NoAuth401"
+        "404":
+          $ref: "#/components/responses/PromoNotFound"
+
+  /user/promo/{id}/comments:
+    post:
+      tags:
+        - B2C
+      summary: Add a comment to a promo code
+      description: |
+        Adds a comment to the specified promo code. A user may leave multiple comments on the same code.
+      parameters:
+        - $ref: "#/components/parameters/AuthorizationHeader"
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                text:
+                  $ref: "#/components/schemas/CommentText"
+              required:
+                - text
+      responses:
+        "201":
+          description: Comment added successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Comment"
+        "400":
+          $ref: "#/components/responses/Response400"
+        "401":
+          $ref: "#/components/responses/NoAuth401"
+        "404":
+          $ref: "#/components/responses/PromoNotFound"
+
+    get:
+      tags:
+        - B2C
+      summary: Get comments for a promo code
+      description: |
+        Returns a list of comments for the specified promo code. Sorted by publication date descending.
+      parameters:
+        - $ref: "#/components/parameters/AuthorizationHeader"
+        - $ref: "#/components/parameters/LimitQueryParam"
+        - $ref: "#/components/parameters/OffsetQueryParam"
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: List of comments.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Comment"
+          headers:
+            X-Total-Count:
+              $ref: "#/components/headers/XTotalCount"
+        "400":
+          $ref: "#/components/responses/Response400"
+        "401":
+          $ref: "#/components/responses/NoAuth401"
+        "404":
+          $ref: "#/components/responses/PromoNotFound"
+
+  /user/promo/{id}/comments/{comment_id}:
+    get:
+      tags:
+        - B2C
+      summary: Get a specific comment
+      description: |
+        Returns the comment with the given ID.
+      parameters:
+        - $ref: "#/components/parameters/AuthorizationHeader"
+        - $ref: "#/components/parameters/Id"
+        - $ref: "#/components/parameters/CommentId"
+      responses:
+        "200":
+          description: Comment details.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Comment"
+        "400":
+          $ref: "#/components/responses/Response400"
+        "401":
+          $ref: "#/components/responses/NoAuth401"
+        "404":
+          $ref: "#/components/responses/PromoOrCommentNotFound"
+
+    put:
+      tags:
+        - B2C
+      summary: Edit a comment
+      description: |
+        Updates the text of the comment with the given ID.
+      parameters:
+        - $ref: "#/components/parameters/AuthorizationHeader"
+        - $ref: "#/components/parameters/Id"
+        - $ref: "#/components/parameters/CommentId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                text:
+                  $ref: "#/components/schemas/CommentText"
+              required:
+                - text
+      responses:
+        "200":
+          description: Comment updated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Comment"
+        "400":
+          $ref: "#/components/responses/Response400"
+        "401":
+          $ref: "#/components/responses/NoAuth401"
+        "403":
+          $ref: "#/components/responses/NoAccessToComment"
+        "404":
+          $ref: "#/components/responses/PromoOrCommentNotFound"
+
+    delete:
+      tags:
+        - B2C
+      summary: Delete a comment
+      description: |
+        Deletes the comment with the given ID.
+      parameters:
+        - $ref: "#/components/parameters/AuthorizationHeader"
+        - $ref: "#/components/parameters/Id"
+        - $ref: "#/components/parameters/CommentId"
+      responses:
+        "200":
+          description: Comment deleted successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "ok"
+        "400":
+          $ref: "#/components/responses/Response400"
+        "401":
+          $ref: "#/components/responses/NoAuth401"
+        "403":
+          $ref: "#/components/responses/NoAccessToComment"
+        "404":
+          $ref: "#/components/responses/PromoOrCommentNotFound"
+
+  /user/promo/{id}/activate:
+    post:
+      tags:
+        - B2C
+      summary: Activate a promo code
+      description: |
+        Activates a promo code by its ID.
+      parameters:
+        - $ref: "#/components/parameters/Id"
+        - $ref: "#/components/parameters/AuthorizationHeader"
+      responses:
+        "200":
+          description: Promo code successfully activated.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  promo:
+                    type: string
+                    example: "sale-ACME-50"
+        "400":
+          $ref: "#/components/responses/Response400"
+        "401":
+          $ref: "#/components/responses/NoAuth401"
+        "403":
+          description: You cannot use this promo code.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "error"
+                  message:
+                    type: string
+                    example: "You are not allowed to use this promo code."
+        "404":
+          $ref: "#/components/responses/PromoNotFound"
+
+  /user/promo/history:
+    get:
+      tags:
+        - B2C
+      summary: Promo usage history
+      description: |
+        Returns this user's promo usage history with pagination. Sorted by activation date descending. The promo code value is not returned; codes may repeat if activated multiple times.
+      parameters:
+        - $ref: "#/components/parameters/AuthorizationHeader"
+        - $ref: "#/components/parameters/LimitQueryParam"
+        - $ref: "#/components/parameters/OffsetQueryParam"
+      responses:
+        "200":
+          description: Promo usage history.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PromoForUser"
+          headers:
+            X-Total-Count:
+              $ref: "#/components/headers/XTotalCount"
+        "400":
+          $ref: "#/components/responses/Response400"
+        "401":
+          $ref: "#/components/responses/NoAuth401"
+
+components:
+  requestBodies:
+    SignIn:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/SignIn"
+
+  parameters:
+    Id:
+      name: id
+      in: path
+      required: true
+      schema:
+        $ref: "#/components/schemas/PromoId"
+
+    CommentId:
+      name: comment_id
+      in: path
+      required: true
+      schema:
+        $ref: "#/components/schemas/CommentId"
+
+    AuthorizationHeader:
+      name: Authorization
+      in: header
+      required: true
+      schema:
+        type: string
+        minLength: 5
+        maxLength: 300
+      description: Access token in the format "Bearer {token}".
+      example: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.abcdef1234567890"
+
+    LimitQueryParam:
+      name: limit
+      in: query
+      schema:
+        type: integer
+        description: Maximum number of records
+        minimum: 0
+        default: 10
+
+    OffsetQueryParam:
+      name: offset
+      in: query
+      schema:
+        type: integer
+        description: Offset from the start
+        minimum: 0
+        default: 0
+
+  schemas:
+    PromoId:
+      type: string
+      format: uuid
+      description: Unique promo code ID issued by the server.
+      example: d8f9a687-4ff9-4976-a05c-f1bf1e5e2eec
+
+    CommentId:
+      type: string
+      format: uuid
+      example: d727c957-f7c0-4bff-a1ca-b18bd22db9ef
+
+    SignIn:
+      type: object
+      properties:
+        email:
+          $ref: "#/components/schemas/Email"
+        password:
+          $ref: "#/components/schemas/Password"
+      required:
+        - email
+        - password
+
+    Email:
+      type: string
+      format: email
+      minLength: 8
+      maxLength: 120
+      example: "user@example.edu.lu"
+
+    Password:
+      type: string
+      description: User/company password. Must contain Latin letters, at least one uppercase, one lowercase, one digit, and special characters.
+      pattern: "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&])[A-Za-z\\d@$!%*?&]{8,}$"
+      minLength: 8
+      maxLength: 60
+      example: StrongPa$$w0rd!
+
+    Country:
+      type: string
+      format: iso-3166-alpha-2
+      description: User country code in ISO 3166-1 alpha-2 (case-insensitive).
+      example: lu
+
+    Target:
+      type: object
+      description: Target audience
+      properties:
+        age_from:
+          type: integer
+          description: Minimum age (inclusive).
+          minimum: 0
+          maximum: 100
+          example: 18
+        age_until:
+          type: integer
+          description: Maximum age (inclusive).
+          minimum: 0
+          maximum: 100
+          example: 30
+        country:
+          $ref: "#/components/schemas/Country"
+        categories:
+          type: array
+          maxLength: 20
+          items:
+            type: string
+            minLength: 2
+            maxLength: 20
+          description: Targeting categories.
+          example: [ios, cats, sports, teacher]
+
+    PromoDescription:
+      description: Promo code description
+      type: string
+      maxLength: 300
+      minLength: 10
+      example: "10% extra cashback for new bank clients!"
+
+    PromoImageURL:
+      description: URL to promo image
+      type: string
+      format: url
+      maxLength: 350
+      example: https://cdn2.thecatapi.com/images/3lo.jpg
+
+    PromoPatch:
+      type: object
+      description: Fields for editing a promo code
+      properties:
+        description:
+          $ref: "#/components/schemas/PromoDescription"
+        image_url:
+          $ref: "#/components/schemas/PromoImageURL"
+        target:
+          $ref: "#/components/schemas/Target"
+        max_count:
+          oneOf:
+            - type: integer
+              minimum: 0
+              maximum: 100000000
+              description: |
+                Maximum uses for COMMON mode. If current activations exceed this, returns an error. When equal, code becomes inactive. Increasing for an inactive code reactivates it.
+            - type: integer
+              minimum: 1
+              maximum: 1
+              description: Must be 1 for UNIQUE mode.
+        active_from:
+          type: string
+          format: date
+          description: Start date (inclusive).
+        active_until:
+          type: string
+          format: date
+          description: End date (inclusive).
+
+    PromoCreate:
+      properties:
+        mode:
+          type: string
+          enum:
+            - COMMON
+            - UNIQUE
+          description: Code mode.
+        promo_common:
+          type: string
+          minLength: 5
+          maxLength: 30
+          description: Required if mode=COMMON.
+          example: sale-10
+        promo_unique:
+          type: array
+          minLength: 1
+          maxLength: 5000
+          items:
+            type: string
+            minLength: 3
+            maxLength: 30
+          description: Required if mode=UNIQUE.
+          example:
+            - winter-sale-30-abc28f99qa
+            - winter-sale-30-299faab2c
+            - sale-100-winner
+      allOf:
+        - $ref: "#/components/schemas/PromoPatch"
+      required:
+        - description
+        - mode
+        - max_count
+        - target
+
+    PromoForUser:
+      type: object
+      description: Fields when returned to user
+      properties:
+        promo_id:
+          $ref: "#/components/schemas/PromoId"
+        company_id:
+          $ref: "#/components/schemas/CompanyId"
+        company_name:
+          $ref: "#/components/schemas/CompanyName"
+        description:
+          $ref: "#/components/schemas/PromoDescription"
+        image_url:
+          $ref: "#/components/schemas/PromoImageURL"
+        active:
+          $ref: "#/components/schemas/PromoIsActive"
+        is_activated_by_user:
+          type: boolean
+          description: Whether the user activated this code.
+          example: false
+        like_count:
+          type: integer
+          minimum: 0
+          description: Number of likes.
+          example: 0
+        is_liked_by_user:
+          type: boolean
+          description: Whether the user liked this code.
+          example: false
+        comment_count:
+          type: integer
+          minimum: 0
+          description: Number of comments.
+          example: 0
+      required:
+        - promo_id
+        - company_id
+        - company_name
+        - description
+        - active
+        - is_activated_by_user
+        - like_count
+        - is_liked_by_user
+        - comment_count
+
+    PromoReadOnly:
+      type: object
+      description: Promo code (read-only)
+      properties:
+        promo_id:
+          $ref: "#/components/schemas/PromoId"
+        company_id:
+          $ref: "#/components/schemas/CompanyId"
+        company_name:
+          $ref: "#/components/schemas/CompanyName"
+        like_count:
+          readOnly: true
+          type: integer
+          minimum: 0
+          example: 20
+        used_count:
+          readOnly: true
+          type: integer
+          minimum: 0
+          example: 7
+        active:
+          $ref: "#/components/schemas/PromoIsActive"
+      allOf:
+        - $ref: "#/components/schemas/PromoCreate"
+      required:
+        - promo_id
+        - company_id
+        - company_name
+        - like_count
+        - used_count
+        - active
+
+    PromoStat:
+      type: object
+      description: Promo code statistics
+      properties:
+        activations_count:
+          type: integer
+          minimum: 0
+          example: 10
+          readOnly: true
+        countries:
+          type: array
+          items:
+            type: object
+            readOnly: true
+            properties:
+              country:
+                $ref: "#/components/schemas/Country"
+              activations_count:
+                type: integer
+                minimum: 1
+                description: Number of activations in this country.
+            required:
+              - country
+              - activations_count
+      required:
+        - activations_count
+
+    UserTargetSettings:
+      type: object
+      description: User targeting settings
+      properties:
+        age:
+          type: integer
+          minimum: 0
+          maximum: 100
+          example: 25
+        country:
+          $ref: "#/components/schemas/Country"
+      required:
+        - age
+        - country
+
+    UserFirstName:
+      type: string
+      minLength: 1
+      maxLength: 100
+      example: Alice
+
+    UserSurname:
+      type: string
+      minLength: 1
+      maxLength: 120
+      example: Johnson
+
+    UserAvatarURL:
+      description: URL to user avatar
+      type: string
+      format: url
+      maxLength: 350
+      example: https://cdn2.thecatapi.com/images/3lo.jpg
+
+    User:
+      type: object
+      properties:
+        name:
+          $ref: "#/components/schemas/UserFirstName"
+        surname:
+          $ref: "#/components/schemas/UserSurname"
+        email:
+          $ref: "#/components/schemas/Email"
+        avatar_url:
+          $ref: "#/components/schemas/UserAvatarURL"
+        other:
+          $ref: "#/components/schemas/UserTargetSettings"
+      required:
+        - name
+        - surname
+        - email
+        - other
+
+    UserRegister:
+      type: object
+      properties:
+        password:
+          $ref: "#/components/schemas/Password"
+      allOf:
+        - $ref: "#/components/schemas/User"
+      required:
+        - password
+
+    UserPatch:
+      type: object
+      properties:
+        name:
+          $ref: "#/components/schemas/UserFirstName"
+        surname:
+          $ref: "#/components/schemas/UserSurname"
+        avatar_url:
+          $ref: "#/components/schemas/UserAvatarURL"
+        password:
+          $ref: "#/components/schemas/Password"
+
+    CommentText:
+      type: string
+      minLength: 10
+      maxLength: 1000
+      description: Comment text
+      example: "Great offer, everything works perfectly."
+
+    Comment:
+      type: object
+      properties:
+        id:
+          $ref: "#/components/schemas/CommentId"
+        text:
+          $ref: "#/components/schemas/CommentText"
+        date:
+          type: string
+          format: date-time
+          description: Creation date and time in RFC3339 format (e.g., with timezone offset).
+          example: 2025-01-02T15:04:05+01:00
+        author:
+          type: object
+          properties:
+            name:
+              $ref: "#/components/schemas/UserFirstName"
+            surname:
+              $ref: "#/components/schemas/UserSurname"
+            avatar_url:
+              $ref: "#/components/schemas/UserAvatarURL"
+          required:
+            - name
+            - surname
+      required:
+        - id
+        - text
+        - date
+        - author
+
+    CompanyId:
+      readOnly: true
+      type: string
+      format: uuid
+      description: Unique company identifier.
+      example: da3ad08d-9b86-41ff-ad70-a30a64d3d170
+
+    CompanyNameCreate:
+      type: string
+      description: Company name.
+      minLength: 5
+      maxLength: 50
+      example: "ACME Corporation"
+
+    CompanyName:
+      allOf:
+        - $ref: "#/components/schemas/CompanyNameCreate"
+      readOnly: true
+
+    PromoIsActive:
+      readOnly: true
+      type: boolean
+      default: true
+      description: |
+        Whether the promo code is currently active. Determined by the server:
+        1) Current date within [active_from; active_until].
+        2) For COMMON mode, activations < max_count.
+        3) For UNIQUE mode, unissued codes remain.
+
+  headers:
+    XTotalCount:
+      schema:
+        type: integer
+        example: 37
+      description: Total number of objects for pagination responses.
+
+  responses:
+    Response400:
+      description: Bad request data (format or constraints violation).
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              status:
+                type: string
+                example: "error"
+              message:
+                type: string
+                example: "Bad request data."
+    SignIn200:
+      description: Successful authentication.
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              token:
+                type: string
+                maxLength: 300
+                description: Access token. Old tokens become invalid after successful sign-in.
+                example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.abcdef1234567890"
+    SignIn401:
+      description: Invalid email or password.
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              status:
+                type: string
+                example: "error"
+              message:
+                type: string
+                example: "Invalid email or password."
+    NoAuth401:
+      description: User not authenticated.
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              status:
+                type: string
+                example: "error"
+              message:
+                type: string
+                example: "User not authenticated."
+    NoAccessToPromo:
+      description: Promo code does not belong to this company.
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              status:
+                type: string
+                example: "error"
+              message:
+                type: string
+                example: "Promo code does not belong to this company."
+    NoAccessToComment:
+      description: Comment does not belong to the user.
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              status:
+                type: string
+                example: "error"
+              message:
+                type: string
+                example: "Comment does not belong to the user."
+    PromoNotFound:
+      description: Promo code not found.
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              status:
+                type: string
+                example: "error"
+              message:
+                type: string
+                example: "Promo code not found."
+    EmailAlreadyRegistered:
+      description: Email is already registered.
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              status:
+                type: string
+                example: "error"
+              message:
+                type: string
+                example: "Email is already registered."
+    PromoOrCommentNotFound:
+      description: Promo code or comment not found.
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              status:
+                type: string
+                example: "error"
+              message:
+                type: string
+                example: "Promo code or comment not found."
