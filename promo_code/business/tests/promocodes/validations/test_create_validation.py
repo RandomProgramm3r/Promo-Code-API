@@ -306,6 +306,42 @@ class TestPromoCreate(
             rest_framework.status.HTTP_400_BAD_REQUEST,
         )
 
+    def test_missing_promo_common_field_for_common_promo(self):
+        payload = {
+            'description': 'Increased cashback 40% for new bank clients!',
+            'max_count': 100,
+            'target': {},
+            'active_from': '2028-12-20',
+            'mode': 'COMMON',
+        }
+        response = self.client.post(
+            self.promo_list_create_url,
+            payload,
+            format='json',
+        )
+        self.assertEqual(
+            response.status_code,
+            rest_framework.status.HTTP_400_BAD_REQUEST,
+        )
+
+    def test_missing_promo_unique_field_for_unique_promo(self):
+        payload = {
+            'description': 'Increased cashback 40% for new bank clients!',
+            'max_count': 100,
+            'target': {},
+            'active_from': '2028-12-20',
+            'mode': 'UNIQUE',
+        }
+        response = self.client.post(
+            self.promo_list_create_url,
+            payload,
+            format='json',
+        )
+        self.assertEqual(
+            response.status_code,
+            rest_framework.status.HTTP_400_BAD_REQUEST,
+        )
+
     @parameterized.parameterized.expand(
         [
             (

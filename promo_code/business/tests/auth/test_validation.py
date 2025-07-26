@@ -90,6 +90,17 @@ class InvalidCompanyRegistrationTestCase(
             rest_framework.status.HTTP_400_BAD_REQUEST,
         )
 
+    def test_create_company_missing_email_fiels(self):
+        with self.assertRaisesMessage(
+            ValueError,
+            'The Email must be set',
+        ):
+            business.models.Company.objects.create_company(
+                name=self.valid_data['name'],
+                password=self.valid_data['password'],
+                email=None,
+            )
+
 
 class InvalidCompanyAuthenticationTestCase(
     business.tests.auth.base.BaseBusinessAuthTestCase,
@@ -131,4 +142,25 @@ class InvalidCompanyAuthenticationTestCase(
         self.assertEqual(
             response.status_code,
             rest_framework.status.HTTP_401_UNAUTHORIZED,
+        )
+
+    def test_signin_invalid_email(self):
+        business.models.Company.objects.create_company(
+            email=self.valid_data['email'],
+            name=self.valid_data['name'],
+            password=self.valid_data['password'],
+        )
+
+        data = {
+            'email': 'example11@example.com',
+            'password': self.valid_data['password'],
+        }
+        response = self.client.post(
+            self.company_signin_url,
+            data,
+            format='json',
+        )
+        self.assertEqual(
+            response.status_code,
+            rest_framework.status.HTTP_400_BAD_REQUEST,
         )
