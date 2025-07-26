@@ -53,6 +53,8 @@ jobs:
           echo "ANTIFRAUD_EXTERNAL_PORT=8081" >> .env
           echo "ANTIFRAUD_CACHE_MS=1000" >> .env
 
+      - name: Set up Docker Buildx & Compose
+        uses: docker/compose-action@v2
 
       - name: Build and run Docker containers
         run: docker-compose up -d --build
