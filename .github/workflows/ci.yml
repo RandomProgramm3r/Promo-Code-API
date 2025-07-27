@@ -69,7 +69,7 @@ jobs:
           "cd promo_code && coverage run --rcfile=.coveragerc manage.py test && coverage xml"
         
       - name: Copy coverage report from container 📂
-        run: docker compose cp web:/app/promo_code/coverage.xml ./coverage.xml
+        run: docker compose cp web:/usr/src/app/promo_code/coverage.xml ./coverage.xml
 
       - name: Upload coverage to Codecov 🚀
         uses: codecov/codecov-action@v5
