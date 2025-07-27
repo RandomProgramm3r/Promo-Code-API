@@ -66,7 +66,7 @@ jobs:
       - name: Run tests and generate coverage report 🛡️
         run: >
           docker compose exec -T web sh -c
-          "cd promo_code && coverage run --rcfile=.coveragerc manage.py test && coverage xml"
+          "coverage run --source='.' promo_code/manage.py test business core user && coverage xml -o promo_code/coverage.xml"
         
       - name: Copy coverage report from container 📂
         run: docker compose cp web:/usr/src/app/promo_code/coverage.xml ./coverage.xml
